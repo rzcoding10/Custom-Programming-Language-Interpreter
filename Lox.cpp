@@ -1,5 +1,7 @@
 #include "Lox.h"
 #include "Scanner.h"
+#include "Parser.h"       
+#include "ASTprinter.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -9,7 +11,7 @@ bool Lox::hadError = false;
 
 int Lox::mainProgram(int argc, char* argv[]) {
     if (argc > 2) {
-        cout << "Usage: clox [script]" << endl;
+        cout << "Usage: cpplox [script]" << endl;
         return 64;
     } else if (argc == 2) {
         runFile(argv[1]);
@@ -34,10 +36,20 @@ void Lox::runFile(const string& path) {
 }
 
 void Lox::runPrompt() {
+    cout << "Type 'exit' to quit." << endl;
+    
     string line;
+    
     for (;;) {
         cout << "> ";
-        if (!getline(cin, line)) break;
+        if (!getline(cin, line) || line == "exit") {
+            break;
+        }
+
+        if (line.empty()) {
+            continue;
+        }
+
         run(line);
         hadError = false; 
     }
@@ -47,16 +59,32 @@ void Lox::run(const string& source) {
     Scanner scanner(source);
     vector<Token> tokens = scanner.scanTokens();
 
-    for (const Token& token : tokens) {
-        cout << token << endl;
+
+    Parser parser(tokens);
+    optional<Expr> expression = parser.parse();
+
+    if (hadError) return;
+
+    if (expression.has_value()) {
+        AstPrinter printer;
+        cout << printer.print(expression.value()) << endl;
     }
 }
 
-void Lox::error(int line, const string& message) {
-    report(line, "", message);
+void Lox::error(int line, int column, const string& message) 
+{
+    report(line, column, "", message);
 }
 
-void Lox::report(int line, const string& where, const string& message) {
-    cerr << "[line " << line << "] Error" << where << ": " << message << endl;
+void Lox::error(Token token, const string& message) {
+    if (token.type == TokenType::EOF_TOKEN) {
+        report(token.line, token.column, " at end", message);
+    } else {
+        report(token.line, token.column, " at '" + token.lexeme + "'", message);
+    }
+}
+
+void Lox::report(int line, int column, const string& where, const string& message) {
+    cerr << "[line " << line << ":" << column << "] Error" << where << ": " << message << endl;
     hadError = true;
 }

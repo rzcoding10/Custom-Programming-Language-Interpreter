@@ -11,6 +11,7 @@ bool Scanner::isAtEnd()
 
 char Scanner::advance()
 {
+    currentcolumn++;
     return source[current++];
 } 
 
@@ -83,7 +84,7 @@ void Scanner::scanString()
     
     if (isAtEnd())
     {
-        Lox::error(line, "Unterminated string.");
+        Lox::error(line, currentcolumn, "Unexpected character.");
         return;
     }
     
@@ -100,7 +101,8 @@ void Scanner::addToken(TokenType type)
 void Scanner::addToken(TokenType type, Literal literal)
 {
     string text = source.substr(start, current - start);
-    tokens.push_back(Token(type, text, move(literal), line));
+    int startcolumn = currentcolumn - (current - start);
+    tokens.push_back(Token(type, text, move(literal), line, startcolumn));
 }
 
 void Scanner::scanToken()
@@ -135,6 +137,7 @@ void Scanner::scanToken()
             break;
         case '\n':
             line++;
+            currentcolumn=1;
             break;
         case '"':
            scanString();
@@ -145,7 +148,7 @@ void Scanner::scanToken()
             } else if (isAlpha(c)) {
                 identifier();
             } else {
-                Lox::error(line, "Unexpected character.");
+                Lox::error(line, currentcolumn, "Unterminated string.");
             }
             break;
     }
@@ -159,6 +162,6 @@ vector<Token> Scanner::scanTokens()
         scanToken();
     }
 
-    tokens.push_back(Token(TokenType::EOF_TOKEN, "", nullptr, line));
+    tokens.push_back(Token(TokenType::EOF_TOKEN, "", nullptr, line, currentcolumn));
     return tokens;
 }

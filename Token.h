@@ -4,6 +4,8 @@
 #include <unordered_map> 
 #include <sstream>      
 #include <iostream>
+#include <utility>      
+#include <type_traits>
 
 using namespace std;
 
@@ -87,15 +89,18 @@ public:
     const string lexeme;
     const Literal literal;
     const int line;
+    const int column;
 
     Token(TokenType type,
           const string& lexeme,
           Literal literal,
-          int line)
+          int line,
+          int column)
         : type(type),
           lexeme(lexeme),
           literal(move(literal)),
-          line(line)
+          line(line),
+          column(column)
     {
     }
 

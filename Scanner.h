@@ -17,6 +17,7 @@ private:
     size_t start = 0;
     size_t current = 0;
     int line = 1;
+    int currentcolumn = 1;
 
     bool isAtEnd();
     char advance();
