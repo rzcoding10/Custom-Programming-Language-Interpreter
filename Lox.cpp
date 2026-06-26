@@ -2,11 +2,13 @@
 #include "Scanner.h"
 #include "Parser.h"       
 #include "ASTprinter.h"
+#include "Interpreter.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
 
+Interpreter Lox::interpreter;
 bool Lox::hadError = false;
 
 int Lox::mainProgram(int argc, char* argv[]) {
@@ -37,7 +39,7 @@ void Lox::runFile(const string& path) {
 
 void Lox::runPrompt() {
     cout << "Type 'exit' to quit." << endl;
-    
+
     string line;
     
     for (;;) {
@@ -55,20 +57,18 @@ void Lox::runPrompt() {
     }
 }
 
-void Lox::run(const string& source) {
-    Scanner scanner(source);
-    vector<Token> tokens = scanner.scanTokens();
+void Lox::run(const string& source) 
+{
+Scanner scanner(source);
+vector<Token> tokens = scanner.scanTokens();
 
+Parser parser(tokens);
 
-    Parser parser(tokens);
-    optional<Expr> expression = parser.parse();
+auto expression = parser.parse();
 
-    if (hadError) return;
+if (hadError || !expression.has_value()) return;
 
-    if (expression.has_value()) {
-        AstPrinter printer;
-        cout << printer.print(expression.value()) << endl;
-    }
+Lox::interpreter.interpret(expression.value());
 }
 
 void Lox::error(int line, int column, const string& message) 

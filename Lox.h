@@ -1,12 +1,14 @@
 #pragma once
 #include <string>
 #include "Token.h"
+#include "Interpreter.h"
 
 using namespace std;
 
 class Lox {
 public:
     static bool hadError;
+    static Interpreter interpreter;
     static int mainProgram(int argc, char* argv[]);
     static void runFile(const string& path);
     static void runPrompt();
