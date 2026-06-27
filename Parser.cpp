@@ -98,6 +98,10 @@ Expr Parser::primary()
         return makeExpr<Grouping>(move(expr));
     }
 
+    if (match({TokenType::IDENTIFIER})) {
+        return std::make_unique<Variable>(previous());
+    }
+
     throw error(peek(), "Expect expression.");
 }
 
@@ -114,16 +118,57 @@ Parser::ParseError Parser::error(Token token, const string& message)
     return ParseError();
 }
 
-optional<Expr> Parser::parse() 
+vector<Stmt> Parser::parse() 
 {
-    try 
-    {
-        return expression();
-    } 
-    catch (ParseError& error) 
-    {
-        return nullopt; 
+    vector<Stmt> statements;
+    while (!isAtEnd()) {
+        try {
+            statements.push_back(declaration());
+        } catch (const ParseError& error) {
+            synchronize(); 
+        }
     }
+    return statements;
+}
+
+Stmt Parser::declaration() {
+    if (match({TokenType::VAR})) return varDeclaration();
+    return statement();
+}
+
+Stmt Parser::varDeclaration() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
+
+    std::optional<Expr> initializer = std::nullopt;
+    if (match({TokenType::EQUAL})) {
+        initializer = expression();
+    }
+
+    consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+    return std::make_unique<VarStmt>(std::move(name), std::move(initializer));
+}
+
+Stmt Parser::statement() 
+{
+    if (match({TokenType::PRINT})) 
+    {
+        return printStatement();
+    }
+    return expressionStatement();
+}
+
+Stmt Parser::printStatement() 
+{
+    Expr value = expression();
+    consume(TokenType::SEMICOLON, "Expect ';' after value.");
+    return make_unique<PrintStmt>(std::move(value));
+}
+
+Stmt Parser::expressionStatement() 
+{
+    Expr expr = expression();
+    consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+    return make_unique<ExpressionStmt>(std::move(expr));
 }
 
 void Parser::synchronize() 

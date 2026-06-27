@@ -1,6 +1,7 @@
 #pragma once
 #include "Token.h"
 #include "Expr.h"
+#include "Stmt.h"
 #include <vector>
 #include <stdexcept>
 #include <optional>
@@ -19,6 +20,12 @@ private:
     public:
         ParseError() : runtime_error("Parse Error") {}
     };
+
+    Stmt declaration();
+    Stmt varDeclaration();
+    Stmt statement();
+    Stmt printStatement();
+    Stmt expressionStatement();
 
     Expr expression();
     Expr equality();
@@ -42,5 +49,5 @@ private:
 public:
     Parser(const vector<Token>& tokens);
 
-    optional<Expr> parse();
+    vector<Stmt> parse();
 };

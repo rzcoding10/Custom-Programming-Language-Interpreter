@@ -9,13 +9,15 @@ struct Binary;
 struct Grouping;
 struct LiteralExpr;
 struct Unary;
+struct Variable;
 
 
 using Expr = variant<
     unique_ptr<Binary>,
     unique_ptr<Grouping>,
     unique_ptr<LiteralExpr>,
-    unique_ptr<Unary>
+    unique_ptr<Unary>,
+    unique_ptr<Variable>
 >;
 
 
@@ -59,4 +61,11 @@ struct Unary
 
     Unary(Token op, Expr right)
         : op(move(op)), right(move(right)) {}
+};
+
+struct Variable 
+{
+    Token name;
+
+    Variable(Token name) : name(std::move(name)) {}
 };

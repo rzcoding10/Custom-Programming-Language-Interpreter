@@ -1,7 +1,5 @@
 #include "Scanner.h"
 
-
-
 Scanner::Scanner(const string& source) : source(source) {}
 
 bool Scanner::isAtEnd()

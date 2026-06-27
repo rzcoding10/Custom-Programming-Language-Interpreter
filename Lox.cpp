@@ -1,7 +1,7 @@
 #include "Lox.h"
 #include "Scanner.h"
 #include "Parser.h"       
-#include "ASTprinter.h"
+//#include "ASTprinter.h"
 #include "Interpreter.h"
 #include <iostream>
 #include <fstream>
@@ -59,16 +59,13 @@ void Lox::runPrompt() {
 
 void Lox::run(const string& source) 
 {
-Scanner scanner(source);
-vector<Token> tokens = scanner.scanTokens();
+    Scanner scanner(source);
+    vector<Token> tokens = scanner.scanTokens();
 
-Parser parser(tokens);
-
-auto expression = parser.parse();
-
-if (hadError || !expression.has_value()) return;
-
-Lox::interpreter.interpret(expression.value());
+    Parser parser(tokens);
+    vector<Stmt> statements = parser.parse();
+    if (hadError) return;
+    interpreter.interpret(statements);
 }
 
 void Lox::error(int line, int column, const string& message) 

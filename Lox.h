@@ -1,7 +1,7 @@
 #pragma once
-#include <string>
 #include "Token.h"
 #include "Interpreter.h"
+#include <string>
 
 using namespace std;
 

@@ -1,13 +1,10 @@
 #pragma once
 #include "Token.h"
+#include "Lox.h"
 #include <string>
 #include <vector>
-#include "Lox.h"
 
 using namespace std;
-
-
-
 
 class Scanner
 {

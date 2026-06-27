@@ -1,0 +1,2 @@
+var definedVar = 100;
+print undefinedVar;

@@ -1,16 +1,23 @@
 #pragma once
 #include "Expr.h"
 #include "Token.h"
+#include "Stmt.h"
+#include "RuntimeError.h"
+#include "Environment.h"
 #include <variant>
 #include <type_traits>
-#include "RuntimeError.h"
 #include <iostream>
+#include <vector>
+#include <memory>
 
 using namespace std;
 
 class Interpreter 
 {
 private:
+    // Memory bank restored!
+    std::shared_ptr<Environment> environment = std::make_shared<Environment>();
+
     void checkNumberOperand(const Token& op, const Literal& operand) {
         if (holds_alternative<double>(operand)) return;
         throw RuntimeError(op, "Operand must be a number.");
@@ -48,7 +55,30 @@ private:
                 if (text.back() == '.') text.pop_back();
                 return text;
             }
+            return "";
         }, value);
+    }
+
+    void execute(const Stmt& stmt) 
+    {
+        visit([this](const auto& node) {
+            using T = decay_t<decltype(*node)>;
+
+            if constexpr (is_same_v<T, PrintStmt>) {
+                Literal value = evaluate(node->expression);
+                cout << stringify(value) << "\n";
+            } 
+            else if constexpr (is_same_v<T, ExpressionStmt>) {
+                evaluate(node->expression); 
+            }
+            else if constexpr (is_same_v<T, VarStmt>) {
+                Literal value = nullptr;
+                if (node->initializer.has_value()) {
+                    value = evaluate(node->initializer.value());
+                }
+                environment->define(node->name.lexeme, value);
+            }
+        }, stmt);
     }
 
 public:
@@ -74,13 +104,12 @@ public:
                 {
                     case TokenType::BANG:
                         return !isTruthy(right);
-                    
                     case TokenType::MINUS:
                         checkNumberOperand(node->op, right);
                         return -get<double>(right);
+                    default:
+                        return nullptr;
                 }
-
-                return nullptr;
             }
             else if constexpr (is_same_v<T, Binary>) 
             {
@@ -90,7 +119,7 @@ public:
                 switch (node->op.type) 
                 {
                     case TokenType::MINUS:
-                        checkNumberOperands(node->op, left, right); // CHECK TYPES HERE
+                        checkNumberOperands(node->op, left, right);
                         return get<double>(left) - get<double>(right);
                     case TokenType::SLASH:
                         checkNumberOperands(node->op, left, right);
@@ -108,7 +137,6 @@ public:
                             return get<string>(left) + get<string>(right);
                         }
                         throw RuntimeError(node->op, "Operands must be two numbers or two strings.");
-
                     case TokenType::GREATER:
                         checkNumberOperands(node->op, left, right);
                         return get<double>(left) > get<double>(right);
@@ -121,26 +149,28 @@ public:
                     case TokenType::LESS_EQUAL:
                         checkNumberOperands(node->op, left, right);
                         return get<double>(left) <= get<double>(right);
-
                     case TokenType::BANG_EQUAL:
                         return !isEqual(left, right);
                     case TokenType::EQUAL_EQUAL:
                         return isEqual(left, right);
+                    default:
+                        return nullptr;
                 }
-
-                return nullptr;
             }
-
+            else if constexpr (is_same_v<T, Variable>) 
+            {
+                return environment->get(node->name);
+            }
         }, expr);
     }
     
-    void interpret(const Expr& expression) 
+    void interpret(const vector<Stmt>& statements) 
     {
         try {
-            Literal value = evaluate(expression);
-            cout << stringify(value) << "\n";
-        } catch (const RuntimeError& error) 
-        {
+            for (const Stmt& statement : statements) {
+                execute(statement);
+            }
+        } catch (const RuntimeError& error) {
             cerr << error.what() << "\n[line " << error.token.line << "]\n";
         }
     }
