@@ -1,7 +1,7 @@
 #include "Lox.h"
 #include "Scanner.h"
 #include "Parser.h"       
-//#include "ASTprinter.h"
+#include "ASTprinter.h"
 #include "Interpreter.h"
 #include <iostream>
 #include <fstream>

@@ -10,9 +10,11 @@ struct Grouping;
 struct LiteralExpr;
 struct Unary;
 struct Variable;
+struct Assign;
 
 
 using Expr = variant<
+    unique_ptr<Assign>,
     unique_ptr<Binary>,
     unique_ptr<Grouping>,
     unique_ptr<LiteralExpr>,
@@ -68,4 +70,13 @@ struct Variable
     Token name;
 
     Variable(Token name) : name(std::move(name)) {}
+};
+
+struct Assign 
+{
+    Token name;
+    Expr value;
+
+    Assign(Token name, Expr value)
+        : name(std::move(name)), value(std::move(value)) {}
 };

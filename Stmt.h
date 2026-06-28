@@ -1,36 +1,52 @@
 #pragma once
-#include "Expr.h"
 #include <memory>
 #include <variant>
-#include <utility>
-#include <optional>
+#include <vector>
+#include<optional>
+#include "Expr.h"
+#include "Token.h"
 
 using namespace std;
 
-struct ExpressionStmt 
-{
-    Expr expression;
+struct Block;
+struct ExpressionStmt;
+struct PrintStmt;
+struct VarStmt;
 
-    ExpressionStmt(Expr expr) : expression(move(expr)) {}
+
+using Stmt = variant<
+    unique_ptr<Block>,
+    unique_ptr<ExpressionStmt>,
+    unique_ptr<PrintStmt>,
+    unique_ptr<VarStmt>
+>;
+
+
+struct Block {
+    vector<Stmt> statements;
+
+    Block(vector<Stmt> statements)
+        : statements(std::move(statements)) {}
 };
 
-struct PrintStmt 
-{
+struct ExpressionStmt {
     Expr expression;
 
-    PrintStmt(Expr expr) : expression(move(expr)) {}
+    ExpressionStmt(Expr expression)
+        : expression(std::move(expression)) {}
+};
+
+struct PrintStmt {
+    Expr expression;
+
+    PrintStmt(Expr expression)
+        : expression(std::move(expression)) {}
 };
 
 struct VarStmt {
     Token name;
     std::optional<Expr> initializer;
 
-    VarStmt(Token name, std::optional<Expr> initializer) 
+    VarStmt(Token name, std::optional<Expr> initializer)
         : name(std::move(name)), initializer(std::move(initializer)) {}
 };
-
-using Stmt = variant<
-    unique_ptr<ExpressionStmt>,
-    unique_ptr<PrintStmt>,
-    unique_ptr<VarStmt>
->;

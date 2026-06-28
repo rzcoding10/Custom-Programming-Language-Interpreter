@@ -24,10 +24,12 @@ private:
     Stmt declaration();
     Stmt varDeclaration();
     Stmt statement();
+    vector<Stmt> block();
     Stmt printStatement();
     Stmt expressionStatement();
 
     Expr expression();
+    Expr assignment();
     Expr equality();
     Expr comparison();
     Expr term();

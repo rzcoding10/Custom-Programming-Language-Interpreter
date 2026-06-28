@@ -7,7 +7,26 @@ Parser::Parser(const vector<Token>& tokens) : tokens(tokens)
 
 Expr Parser::expression()
 {
-    return equality();
+    return assignment();
+}
+
+Expr Parser::assignment() 
+{
+        Expr expr = equality(); 
+
+        if (match({TokenType::EQUAL})) 
+        {
+            Token equals = previous();
+            Expr value = assignment(); 
+            if (holds_alternative<unique_ptr<Variable>>(expr)) 
+            {
+                Token name = get<unique_ptr<Variable>>(expr)->name;
+                return makeExpr<Assign>(name, std::move(value));
+            }
+            error(equals, "Invalid assignment target."); 
+        }
+
+        return expr;
 }
 
 Expr Parser::equality()
@@ -154,7 +173,25 @@ Stmt Parser::statement()
     {
         return printStatement();
     }
+
+    if (match({TokenType::LEFT_BRACE})) 
+    {
+        return make_unique<Block>(block());
+    }
+
     return expressionStatement();
+}
+
+vector<Stmt> Parser::block() 
+{
+    vector<Stmt> statements;
+
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        statements.push_back(declaration());
+    }
+
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
 }
 
 Stmt Parser::printStatement() 

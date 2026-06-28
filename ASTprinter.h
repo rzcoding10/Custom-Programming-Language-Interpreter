@@ -37,6 +37,17 @@ public:
             {
                 return parenthesize(node->op.lexeme, node->right);
             }
+            
+            else if constexpr (is_same_v<T, Variable>)
+            {
+                return node->name.lexeme;
+            }
+            else if constexpr (is_same_v<T, Assign>)
+            {
+                return parenthesize("= " + node->name.lexeme, node->value);
+            }
+            
+            return "Unknown Expression";
 
         }, expr);
     }

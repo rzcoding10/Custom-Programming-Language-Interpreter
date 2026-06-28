@@ -15,7 +15,6 @@ using namespace std;
 class Interpreter 
 {
 private:
-    // Memory bank restored!
     std::shared_ptr<Environment> environment = std::make_shared<Environment>();
 
     void checkNumberOperand(const Token& op, const Literal& operand) {
@@ -78,7 +77,28 @@ private:
                 }
                 environment->define(node->name.lexeme, value);
             }
+            else if constexpr (is_same_v<T, Block>) 
+            {
+                executeBlock(node->statements, std::make_shared<Environment>(environment));
+            }
         }, stmt);
+    }
+
+    void executeBlock(const vector<Stmt>& statements, std::shared_ptr<Environment> environment) {
+        std::shared_ptr<Environment> previous = this->environment;
+
+        try {
+            this->environment = environment;
+
+            for (const Stmt& statement : statements) {
+                execute(statement);
+            }
+        } catch (...) {
+            this->environment = previous;
+            throw;
+        }
+        
+        this->environment = previous;
     }
 
 public:
@@ -160,6 +180,12 @@ public:
             else if constexpr (is_same_v<T, Variable>) 
             {
                 return environment->get(node->name);
+            }
+            else if constexpr (is_same_v<T, Assign>) 
+            {
+                Literal value = evaluate(node->value);
+                environment->assign(node->name, value);
+                return value;
             }
         }, expr);
     }
