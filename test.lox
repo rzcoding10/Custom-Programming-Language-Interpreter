@@ -1,18 +1,11 @@
-for (var a = 1; a < 3; a = a + 1) {
-    print "Initializer a:";
-    print a;
-    
-    var a = -1; 
-    print "Shadowed a:";
-    print a;
+var startTime = clock();
+print startTime;
+
+var i = 0;
+while (i < 1000) {
+    i = i + 1;
 }
 
-// Expected output:
-// Initializer a:
-// 1
-// Shadowed a:
-// -1
-// Initializer a:
-// 2
-// Shadowed a:
-// -1
+var endTime = clock();
+print "Loop took this many seconds:";
+print endTime - startTime;

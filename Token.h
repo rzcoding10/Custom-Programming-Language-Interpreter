@@ -6,8 +6,10 @@
 #include <iostream>
 #include <utility>      
 #include <type_traits>
+#include <memory>       
 
 using namespace std;
+class LoxCallable;
 
 enum class TokenType
 {
@@ -80,7 +82,7 @@ inline const unordered_map<string, TokenType> keywords =
     {"while",  TokenType::WHILE}
 };
 
-using Literal = variant<nullptr_t,double,string,bool>;
+using Literal = variant<nullptr_t,double,string,bool,std::shared_ptr<LoxCallable>>;
 
 class Token
 {

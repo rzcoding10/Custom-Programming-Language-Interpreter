@@ -41,6 +41,8 @@ private:
     Expr primary();
     Expr logic_or();
     Expr logic_and();
+    Expr call();
+    Expr finishCall(Expr callee);
 
     bool match(initializer_list<TokenType> types);
     bool check(TokenType type);

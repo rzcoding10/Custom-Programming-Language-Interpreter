@@ -4,19 +4,52 @@
 #include "Stmt.h"
 #include "RuntimeError.h"
 #include "Environment.h"
+#include "LoxCallable.h"
 #include <variant>
 #include <type_traits>
 #include <iostream>
 #include <vector>
 #include <memory>
+#include<chrono>
+
 
 using namespace std;
 
+class ClockCallable : public LoxCallable {
+public:
+    int arity() override { 
+        return 0; // clock() takes no arguments
+    }
+    
+    Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override {
+        // Returns the current time in seconds as a double
+        auto now = std::chrono::system_clock::now().time_since_epoch();
+        return std::chrono::duration<double>(now).count(); 
+    }
+
+    std::string toString() override { 
+        return "<native fn>"; 
+    }
+};
+
+
 class Interpreter 
 {
+public:
+    std::shared_ptr<Environment> globals;
+    
 private:
-    std::shared_ptr<Environment> environment = std::make_shared<Environment>();
+    std::shared_ptr<Environment> environment;
 
+public:
+    Interpreter() 
+    {
+        globals = std::make_shared<Environment>();
+        environment = globals;
+        globals->define("clock", std::make_shared<ClockCallable>());
+    }
+private:
+    
     void checkNumberOperand(const Token& op, const Literal& operand) {
         if (holds_alternative<double>(operand)) return;
         throw RuntimeError(op, "Operand must be a number.");
@@ -53,6 +86,10 @@ private:
                 text.erase(text.find_last_not_of('0') + 1, string::npos);
                 if (text.back() == '.') text.pop_back();
                 return text;
+            }
+            else if constexpr (is_same_v<ValT, std::shared_ptr<LoxCallable>>) 
+            {
+                return val->toString();
             }
             return "";
         }, value);
@@ -104,11 +141,11 @@ private:
         }, stmt);
     }
 
-    void executeBlock(const vector<Stmt>& statements, std::shared_ptr<Environment> environment) {
+    void executeBlock(const vector<Stmt>& statements, std::shared_ptr<Environment> newEnvironment) {
         std::shared_ptr<Environment> previous = this->environment;
 
         try {
-            this->environment = environment;
+            this->environment = newEnvironment;
 
             for (const Stmt& statement : statements) {
                 execute(statement);
@@ -206,6 +243,29 @@ public:
                 Literal value = evaluate(node->value);
                 environment->assign(node->name, value);
                 return value;
+            }
+            else if constexpr (is_same_v<T, Call>) 
+            {
+                Literal callee = evaluate(node->callee);
+
+                std::vector<Literal> arguments;
+                for (const Expr& arg : node->arguments) {
+                    arguments.push_back(evaluate(arg));
+                }
+                
+                if (!std::holds_alternative<std::shared_ptr<LoxCallable>>(callee)) {
+                    throw RuntimeError(node->paren, "Can only call functions and classes.");
+                }
+
+                auto function = std::get<std::shared_ptr<LoxCallable>>(callee);
+
+                if (arguments.size() != function->arity()) {
+                    throw RuntimeError(node->paren, 
+                        "Expected " + std::to_string(function->arity()) + 
+                        " arguments but got " + std::to_string(arguments.size()) + ".");
+                }
+
+                return function->call(*this, arguments);
             }
             else if constexpr (is_same_v<T, Logical>) 
             {

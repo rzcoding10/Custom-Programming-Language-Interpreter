@@ -26,13 +26,14 @@ public:
             else if constexpr (is_same_v<T, LiteralExpr>) 
             {
                 return visit([](const auto& val) -> string {
-                    using ValT = decay_t<decltype(val)>;
-                    if constexpr (is_same_v<ValT, nullptr_t>) return "nil";
-                    else if constexpr (is_same_v<ValT, string>) return val;
-                    else if constexpr (is_same_v<ValT, bool>) return val ? "true" : "false";
-                    else return to_string(val);
-                }, node->value);
-            } 
+                using ValT = decay_t<decltype(val)>;
+        
+                if constexpr (is_same_v<ValT, nullptr_t>) return "nil";
+                else if constexpr (is_same_v<ValT, string>) return val;
+                else if constexpr (is_same_v<ValT, bool>) return val ? "true" : "false";
+                else if constexpr (is_same_v<ValT, double>) return to_string(val);
+                else return "<native fn>"; }, node->value);
+            }
             else if constexpr (is_same_v<T, Unary>) 
             {
                 return parenthesize(node->op.lexeme, node->right);

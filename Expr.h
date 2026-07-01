@@ -12,6 +12,7 @@ struct Logical;
 struct Unary;
 struct Variable;
 struct Assign;
+struct Call;
 
 
 using Expr = variant<
@@ -21,7 +22,8 @@ using Expr = variant<
     unique_ptr<LiteralExpr>,
     std::unique_ptr<Logical>,
     unique_ptr<Unary>,
-    unique_ptr<Variable>
+    unique_ptr<Variable>,
+    unique_ptr<Call>
 >;
 
 
@@ -90,4 +92,13 @@ struct Logical {
 
     Logical(Expr left, Token op, Expr right)
         : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+};
+
+struct Call {
+    Expr callee;
+    Token paren;
+    std::vector<Expr> arguments;
+
+    Call(Expr callee, Token paren, std::vector<Expr> arguments)
+        : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
 };
