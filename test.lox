@@ -1,11 +1,5 @@
-var startTime = clock();
-print startTime;
-
-var i = 0;
-while (i < 1000) {
-    i = i + 1;
+fun sayHi(first, last) {
+  print "Hi, " + first + " " + last + "!";
 }
 
-var endTime = clock();
-print "Loop took this many seconds:";
-print endTime - startTime;
+sayHi("Dear", "Reader");

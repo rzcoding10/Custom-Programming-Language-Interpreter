@@ -14,6 +14,7 @@ struct IfStmt;
 struct PrintStmt;
 struct VarStmt;
 struct WhileStmt;
+struct FunctionStmt;
 
 
 using Stmt = variant<
@@ -22,7 +23,8 @@ using Stmt = variant<
     unique_ptr<IfStmt>,
     unique_ptr<PrintStmt>,
     unique_ptr<VarStmt>,
-    unique_ptr<WhileStmt>
+    unique_ptr<WhileStmt>,
+    unique_ptr<FunctionStmt>
 >;
 
 
@@ -72,4 +74,10 @@ struct WhileStmt {
 
     WhileStmt(Expr condition, Stmt body)
         : condition(std::move(condition)), body(std::move(body)) {}
+};
+
+struct FunctionStmt {
+    Token name;
+    std::vector<Token> params;
+    std::vector<Stmt> body;
 };

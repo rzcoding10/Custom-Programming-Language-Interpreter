@@ -12,26 +12,34 @@
 #include <memory>
 #include<chrono>
 
-
+class Interpreter;
 using namespace std;
 
 class ClockCallable : public LoxCallable {
 public:
     int arity() override { 
-        return 0; // clock() takes no arguments
+        return 0; 
     }
     
-    Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override {
-        // Returns the current time in seconds as a double
-        auto now = std::chrono::system_clock::now().time_since_epoch();
-        return std::chrono::duration<double>(now).count(); 
-    }
+    Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override;
 
     std::string toString() override { 
         return "<native fn>"; 
     }
 };
 
+ class LoxFunction : public LoxCallable 
+{
+private:
+    FunctionStmt* declaration;
+public:
+    LoxFunction(FunctionStmt* declaration) : declaration(declaration) {}
+    int arity() override { return declaration->params.size(); }
+    
+    Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override;
+    
+    std::string toString() override { return "<fn " + declaration->name.lexeme + ">"; }
+};
 
 class Interpreter 
 {
@@ -138,9 +146,14 @@ private:
                     execute(node->body);
                 }
             }
+            else if constexpr (is_same_v<T, FunctionStmt>) 
+            {
+                std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get());
+                environment->define(node->name.lexeme, function);
+            }
         }, stmt);
     }
-
+public:
     void executeBlock(const vector<Stmt>& statements, std::shared_ptr<Environment> newEnvironment) {
         std::shared_ptr<Environment> previous = this->environment;
 
@@ -294,3 +307,23 @@ public:
         }
     }
 };
+
+inline Literal ClockCallable::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    return std::chrono::duration<double>(now).count(); 
+}
+
+inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
+    // 1. Create a fresh environment just for this function scope
+    auto environment = std::make_shared<Environment>(interpreter.globals);
+    
+    // 2. Bind the arguments to the parameters inside the new environment
+    for (size_t i = 0; i < declaration->params.size(); ++i) {
+        environment->define(declaration->params[i].lexeme, arguments[i]);
+    }
+    
+    // 3. Execute the body block!
+    interpreter.executeBlock(declaration->body, environment);
+    
+    return nullptr; // We will implement return values in a bit
+}

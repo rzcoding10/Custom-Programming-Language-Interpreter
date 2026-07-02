@@ -30,6 +30,7 @@ private:
     Stmt ifStatement();
     Stmt whileStatement();
     Stmt forStatement();
+    Stmt function(string kind);
 
     Expr expression();
     Expr assignment();
