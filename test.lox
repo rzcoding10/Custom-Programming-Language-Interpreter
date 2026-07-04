@@ -1,5 +1,14 @@
-fun sayHi(first, last) {
-  print "Hi, " + first + " " + last + "!";
+fun volume(a) {
+  fun area(b) {
+    fun length(c) {
+      // Reaches up 1 level for 'b', and 2 levels for 'a'!
+      return a * b * c; 
+    }
+    return length;
+  }
+  return area;
 }
 
-sayHi("Dear", "Reader");
+var getArea = volume(2);
+var getLength = getArea(3);
+print getLength(4);

@@ -10,10 +10,18 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include<chrono>
+#include <chrono>
+#include <exception>
 
 class Interpreter;
 using namespace std;
+
+class ReturnException : public std::exception {
+public:
+    const Literal value;
+    
+    ReturnException(Literal value) : value(value) {}
+};
 
 class ClockCallable : public LoxCallable {
 public:
@@ -28,12 +36,16 @@ public:
     }
 };
 
- class LoxFunction : public LoxCallable 
+class LoxFunction : public LoxCallable 
 {
 private:
     FunctionStmt* declaration;
+    std::shared_ptr<Environment> closure;
+
 public:
-    LoxFunction(FunctionStmt* declaration) : declaration(declaration) {}
+    LoxFunction(FunctionStmt* declaration, std::shared_ptr<Environment> closure) 
+        : declaration(declaration), closure(std::move(closure)) {}
+        
     int arity() override { return declaration->params.size(); }
     
     Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override;
@@ -148,8 +160,18 @@ private:
             }
             else if constexpr (is_same_v<T, FunctionStmt>) 
             {
-                std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get());
+                std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get(),environment);
                 environment->define(node->name.lexeme, function);
+            }
+            else if constexpr (is_same_v<T, ReturnStmt>) // <-- Fix is right here!
+            {
+                Literal value = nullptr;
+                // If the return statement actually has a value (not just 'return;')
+                if (node->value.has_value()) {
+                    value = evaluate(node->value.value());
+                }
+                
+                throw ReturnException(value);
             }
         }, stmt);
     }
@@ -314,16 +336,20 @@ inline Literal ClockCallable::call(Interpreter& interpreter, std::vector<Literal
 }
 
 inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
-    // 1. Create a fresh environment just for this function scope
-    auto environment = std::make_shared<Environment>(interpreter.globals);
+    auto environment = std::make_shared<Environment>(closure);
     
-    // 2. Bind the arguments to the parameters inside the new environment
     for (size_t i = 0; i < declaration->params.size(); ++i) {
         environment->define(declaration->params[i].lexeme, arguments[i]);
     }
     
-    // 3. Execute the body block!
-    interpreter.executeBlock(declaration->body, environment);
+    try {
+        interpreter.executeBlock(declaration->body, environment);
+    } 
+    catch (ReturnException& returnValue) {
+        // We caught the escape hatch! Return the payload.
+        return returnValue.value;
+    }
     
-    return nullptr; // We will implement return values in a bit
+    // If the function finishes without hitting a return statement, it implicitly returns nil.
+    return nullptr; 
 }

@@ -31,6 +31,7 @@ private:
     Stmt whileStatement();
     Stmt forStatement();
     Stmt function(string kind);
+    Stmt returnStatement();
 
     Expr expression();
     Expr assignment();

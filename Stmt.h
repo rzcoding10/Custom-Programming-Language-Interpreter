@@ -2,7 +2,7 @@
 #include <memory>
 #include <variant>
 #include <vector>
-#include<optional>
+#include <optional>
 #include "Expr.h"
 #include "Token.h"
 
@@ -15,6 +15,7 @@ struct PrintStmt;
 struct VarStmt;
 struct WhileStmt;
 struct FunctionStmt;
+struct ReturnStmt;
 
 
 using Stmt = variant<
@@ -24,7 +25,8 @@ using Stmt = variant<
     unique_ptr<PrintStmt>,
     unique_ptr<VarStmt>,
     unique_ptr<WhileStmt>,
-    unique_ptr<FunctionStmt>
+    unique_ptr<FunctionStmt>,
+    unique_ptr<ReturnStmt>
 >;
 
 
@@ -80,4 +82,12 @@ struct FunctionStmt {
     Token name;
     std::vector<Token> params;
     std::vector<Stmt> body;
+};
+
+struct ReturnStmt {
+    Token keyword;              
+    std::optional<Expr> value;  
+
+    ReturnStmt(Token keyword, std::optional<Expr> value) 
+        : keyword(std::move(keyword)), value(std::move(value)) {}
 };

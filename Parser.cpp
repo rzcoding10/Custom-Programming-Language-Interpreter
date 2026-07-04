@@ -255,6 +255,12 @@ Stmt Parser::statement()
         return printStatement();
     }
 
+    if (match({TokenType::RETURN})) 
+    {
+        return returnStatement();
+    }
+
+
     if (match({TokenType::WHILE})) {
         return whileStatement();
     }
@@ -404,6 +410,19 @@ Stmt Parser::function(std::string kind)
         std::move(parameters), 
         std::move(body)
     });
+}
+
+Stmt Parser::returnStatement() {
+    Token keyword = previous(); 
+    std::optional<Expr> value = std::nullopt; // <-- FIX 1: Added <Expr>
+    
+    if (!check(TokenType::SEMICOLON)) {
+        value = expression();
+    }
+    
+    consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+    
+    return std::make_unique<ReturnStmt>(std::move(keyword), std::move(value));// <-- FIX 2: Wrapped in make_unique
 }
 
 void Parser::synchronize() 
