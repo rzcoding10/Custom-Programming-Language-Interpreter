@@ -1,3 +1,5 @@
 lox
+cpplox
+clox
 *.o
 .DS_Store
