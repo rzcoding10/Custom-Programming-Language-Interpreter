@@ -11,10 +11,27 @@ class Environment {
 private:
     std::unordered_map<std::string, Literal> values;
 
+    Environment* ancestor(int distance) {
+        Environment* environment = this;
+        for (int i = 0; i < distance; ++i) {
+            environment = environment->enclosing.get(); 
+        }
+        return environment;
+    }
+
 public:
     shared_ptr<Environment> enclosing;
     Environment() : enclosing(nullptr) {}
     Environment(shared_ptr<Environment> enclosing) : enclosing(enclosing) {}
+
+    Literal getAt(int distance, const Token& name) {
+        return ancestor(distance)->values[name.lexeme];
+    }
+
+    // NEW: Directly assign the value at the exact resolved distance
+    void assignAt(int distance, const Token& name, Literal value) {
+        ancestor(distance)->values[name.lexeme] = value;
+    }
 
     void define(const std::string& name, Literal value) {
         values[name] = value;

@@ -12,6 +12,7 @@
 #include <memory>
 #include <chrono>
 #include <exception>
+#include <map>
 
 class Interpreter;
 using namespace std;
@@ -60,6 +61,7 @@ public:
     
 private:
     std::shared_ptr<Environment> environment;
+    std::map<const void*, int> locals;
 
 public:
     Interpreter() 
@@ -68,8 +70,21 @@ public:
         environment = globals;
         globals->define("clock", std::make_shared<ClockCallable>());
     }
+
+    void resolve(const void* expr, int depth) {
+        locals[expr] = depth;
+    }
 private:
-    
+    Literal lookUpVariable(const Token& name, const void* expr) {
+        auto it = locals.find(expr);
+        if (it != locals.end()) {
+            int distance = it->second;
+            return environment->getAt(distance, name);
+        } else {
+            return globals->get(name);
+        }
+    }
+
     void checkNumberOperand(const Token& op, const Literal& operand) {
         if (holds_alternative<double>(operand)) return;
         throw RuntimeError(op, "Operand must be a number.");
@@ -271,12 +286,22 @@ public:
             }
             else if constexpr (is_same_v<T, Variable>) 
             {
-                return environment->get(node->name);
+                // CHANGED: Use the helper instead of environment->get()
+                return lookUpVariable(node->name, node.get());
             }
             else if constexpr (is_same_v<T, Assign>) 
             {
                 Literal value = evaluate(node->value);
-                environment->assign(node->name, value);
+                
+                // CHANGED: Use assignAt if resolved, otherwise global assign
+                auto it = locals.find(node.get());
+                if (it != locals.end()) {
+                    int distance = it->second;
+                    environment->assignAt(distance, node->name, value);
+                } else {
+                    globals->assign(node->name, value);
+                }
+                
                 return value;
             }
             else if constexpr (is_same_v<T, Call>) 

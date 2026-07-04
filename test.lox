@@ -1,14 +1,14 @@
-fun volume(a) {
-  fun area(b) {
-    fun length(c) {
-      // Reaches up 1 level for 'b', and 2 levels for 'a'!
-      return a * b * c; 
+var a = "global";
+{
+  var a = "outer";
+  {
+    var a = "inner";
+    {
+      var a = "innermost";
+      print a;
     }
-    return length;
+    print a;
   }
-  return area;
+  print a;
 }
-
-var getArea = volume(2);
-var getLength = getArea(3);
-print getLength(4);
+print a;

@@ -3,6 +3,7 @@
 #include "Parser.h"       
 #include "ASTprinter.h"
 #include "Interpreter.h"
+#include "Resolver.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -64,7 +65,18 @@ void Lox::run(const string& source)
 
     Parser parser(tokens);
     vector<Stmt> statements = parser.parse();
+    
+    // 1. Stop if there was a syntax error during parsing
     if (hadError) return;
+
+    // 2. Create the Resolver and run the static analysis
+    Resolver resolver(interpreter);
+    resolver.resolve(statements);
+
+    // 3. Stop if the Resolver found a semantic error
+    if (hadError) return;
+
+    // 4. Finally, execute the code
     interpreter.interpret(statements);
 }
 
