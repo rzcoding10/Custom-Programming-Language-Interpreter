@@ -3,3 +3,5 @@ cpplox
 clox
 *.o
 .DS_Store
+errors.txt
+a.out

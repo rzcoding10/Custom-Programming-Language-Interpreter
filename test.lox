@@ -1,14 +1,9 @@
-var a = "global";
-{
-  var a = "outer";
-  {
-    var a = "inner";
-    {
-      var a = "innermost";
-      print a;
-    }
-    print a;
+class Bagel {
+  taste() {
+    print "The " + this.flavor + " bagel is delicious!";
   }
-  print a;
 }
-print a;
+
+var bagel = Bagel();
+bagel.flavor = "everything";
+bagel.taste(); // The everything bagel is delicious!

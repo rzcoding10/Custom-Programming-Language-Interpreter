@@ -5,6 +5,7 @@
 #include "RuntimeError.h"
 #include "Environment.h"
 #include "LoxCallable.h"
+#include "LoxInstance.h"
 #include <variant>
 #include <type_traits>
 #include <iostream>
@@ -50,6 +51,8 @@ public:
     int arity() override { return declaration->params.size(); }
     
     Literal call(Interpreter& interpreter, std::vector<Literal>& arguments) override;
+
+    std::shared_ptr<LoxFunction> bind(std::shared_ptr<LoxInstance> instance);
     
     std::string toString() override { return "<fn " + declaration->name.lexeme + ">"; }
 };
@@ -126,6 +129,10 @@ private:
             {
                 return val->toString();
             }
+            else if constexpr (is_same_v<ValT, std::shared_ptr<LoxInstance>>) 
+            {
+                return val->toString();
+            }
             return "";
         }, value);
     }
@@ -177,6 +184,20 @@ private:
             {
                 std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get(),environment);
                 environment->define(node->name.lexeme, function);
+            }
+            else if constexpr (is_same_v<T, ClassStmt>) 
+            {
+                std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
+                
+                // Convert the AST nodes into living LoxFunction objects
+                for (const auto& method : node->methods) {
+                    auto function = std::make_shared<LoxFunction>(method.get(), environment);
+                    methods[method->name.lexeme] = function;
+                }
+
+                // Hand the methods map to the class factory
+                std::shared_ptr<LoxCallable> klass = std::make_shared<LoxClass>(node->name.lexeme, std::move(methods));
+                environment->define(node->name.lexeme, klass);
             }
             else if constexpr (is_same_v<T, ReturnStmt>) // <-- Fix is right here!
             {
@@ -327,6 +348,33 @@ public:
 
                 return function->call(*this, arguments);
             }
+            else if constexpr (is_same_v<T, Get>) 
+            {
+                Literal object = evaluate(node->object);
+                if (std::holds_alternative<std::shared_ptr<LoxInstance>>(object)) 
+                {
+                    return std::get<std::shared_ptr<LoxInstance>>(object)->get(node->name);
+                }
+
+                throw RuntimeError(node->name, "Only instances have properties.");
+            }
+            else if constexpr (is_same_v<T, Set>) 
+            {
+                Literal object = evaluate(node->object);
+
+                if (!std::holds_alternative<std::shared_ptr<LoxInstance>>(object)) 
+                {
+                    throw RuntimeError(node->name, "Only instances have fields.");
+                }
+
+                Literal value = evaluate(node->value);
+                std::get<std::shared_ptr<LoxInstance>>(object)->set(node->name, value);
+                return value;
+            }
+            else if constexpr (is_same_v<T, This>) 
+            {
+                return lookUpVariable(node->keyword, node.get());
+            }
             else if constexpr (is_same_v<T, Logical>) 
             {
                 Literal left = evaluate(node->left);
@@ -377,4 +425,35 @@ inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>&
     
     // If the function finishes without hitting a return statement, it implicitly returns nil.
     return nullptr; 
+}
+
+inline Literal LoxClass::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
+    return std::make_shared<LoxInstance>(shared_from_this());
+}
+
+// --- THE BACKPACK BUILDER ---
+inline std::shared_ptr<LoxFunction> LoxFunction::bind(std::shared_ptr<LoxInstance> instance) {
+    auto environment = std::make_shared<Environment>(closure);
+    environment->define("this", instance);
+    return std::make_shared<LoxFunction>(declaration, environment);
+}
+
+// --- UPDATED METHOD LOOKUP ---
+inline Literal LoxInstance::get(const Token& name) {
+    auto it = fields.find(name.lexeme);
+    if (it != fields.end()) {
+        return it->second;
+    }
+
+    std::shared_ptr<LoxFunction> method = klass->findMethod(name.lexeme);
+    if (method != nullptr) {
+        // Here is the magic! We bind the instance before handing the method back.
+        return std::shared_ptr<LoxCallable>(method->bind(shared_from_this())); 
+    }
+
+    throw RuntimeError(name, "Undefined property '" + name.lexeme + "'.");
+}
+
+inline void LoxInstance::set(const Token& name, Literal value) {
+    fields[name.lexeme] = std::move(value);
 }

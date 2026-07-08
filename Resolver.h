@@ -20,8 +20,12 @@ private:
     std::vector<std::map<std::string, bool>> scopes;
 
     // Prevents returning from outside of a function
-    enum class FunctionType { NONE, FUNCTION };
+    // Add METHOD to track when we are inside a class
+    enum class FunctionType { NONE, FUNCTION, METHOD };
     FunctionType currentFunction = FunctionType::NONE;
+
+    enum class ClassType { NONE, CLASS };
+    ClassType currentClass = ClassType::NONE;
 
 public:
     Resolver(Interpreter& interpreter) : interpreter(interpreter) {}
@@ -154,6 +158,27 @@ private:
         }
     }
 
+    void visit(const std::unique_ptr<ClassStmt>& stmt) 
+    {
+        ClassType enclosingClass = currentClass;
+        currentClass = ClassType::CLASS;
+
+        declare(stmt->name);
+        define(stmt->name);
+
+        // Inject 'this' into the scope BEFORE resolving methods
+        beginScope();
+        scopes.back()["this"] = true; 
+
+        for (const auto& method : stmt->methods) {
+            FunctionType declaration = FunctionType::METHOD;
+            resolveFunction(method.get(), declaration);
+        }
+
+        endScope();
+        currentClass = enclosingClass;
+    }
+
 
     // ==========================================
     // VISITOR METHODS FOR EXPRESSIONS
@@ -200,5 +225,23 @@ private:
             Lox::error(expr->name, "Can't read local variable in its own initializer.");
         }
         resolveLocal(expr.get(), expr->name);
+    }
+
+    void visit(const std::unique_ptr<Get>& expr) {
+        resolve(expr->object);
+    }
+
+    void visit(const std::unique_ptr<Set>& expr) {
+        resolve(expr->value);
+        resolve(expr->object);
+    }
+
+    void visit(const std::unique_ptr<This>& expr) 
+    {
+        if (currentClass == ClassType::NONE) {
+            Lox::error(expr->keyword, "Can't use 'this' outside of a class.");
+            return;
+        }
+        resolveLocal(expr.get(), expr->keyword);
     }
 };

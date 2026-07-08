@@ -10,6 +10,7 @@
 
 using namespace std;
 class LoxCallable;
+class LoxInstance;
 
 enum class TokenType
 {
@@ -81,8 +82,7 @@ inline const unordered_map<string, TokenType> keywords =
     {"var",    TokenType::VAR},
     {"while",  TokenType::WHILE}
 };
-
-using Literal = variant<nullptr_t,double,string,bool,std::shared_ptr<LoxCallable>>;
+using Literal = variant<nullptr_t, double, string, bool, std::shared_ptr<LoxCallable>, std::shared_ptr<LoxInstance>>;
 
 class Token
 {
@@ -134,6 +134,11 @@ private:
                 else if constexpr (is_same_v<T, string>)
                 {
                     return value;
+                }
+                else if constexpr (is_same_v<T, std::shared_ptr<LoxCallable>> || 
+                                   is_same_v<T, std::shared_ptr<LoxInstance>>)
+                {
+                    return "runtime_object";
                 }
                 else
                 {

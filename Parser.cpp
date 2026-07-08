@@ -12,21 +12,29 @@ Expr Parser::expression()
 
 Expr Parser::assignment() 
 {
-        Expr expr = logic_or(); 
+    Expr expr = logic_or(); 
 
-        if (match({TokenType::EQUAL})) 
+    if (match({TokenType::EQUAL})) 
+    {
+        Token equals = previous();
+        Expr value = assignment(); 
+
+        if (holds_alternative<unique_ptr<Variable>>(expr)) 
         {
-            Token equals = previous();
-            Expr value = assignment(); 
-            if (holds_alternative<unique_ptr<Variable>>(expr)) 
-            {
-                Token name = get<unique_ptr<Variable>>(expr)->name;
-                return makeExpr<Assign>(name, std::move(value));
-            }
-            error(equals, "Invalid assignment target."); 
+            Token name = get<unique_ptr<Variable>>(expr)->name;
+            return makeExpr<Assign>(name, std::move(value));
+        }
+        else if (holds_alternative<unique_ptr<Get>>(expr)) 
+        {
+            // Transform the Get expression into a Set expression
+            auto getExpr = std::move(get<unique_ptr<Get>>(expr));
+            return makeExpr<Set>(std::move(getExpr->object), std::move(getExpr->name), std::move(value));
         }
 
-        return expr;
+        error(equals, "Invalid assignment target."); 
+    }
+
+    return expr;
 }
 
 Expr Parser::logic_or() 
@@ -131,7 +139,12 @@ Expr Parser::call() {
     while (true) {
         if (match({TokenType::LEFT_PAREN})) {
             expr = finishCall(std::move(expr));
-        } else {
+        } 
+        else if (match({TokenType::DOT})) {
+            Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+            expr = makeExpr<Get>(std::move(expr), std::move(name));
+        } 
+        else {
             break;
         }
     }
@@ -165,6 +178,7 @@ Expr Parser::primary()
     if (match({TokenType::FALSE})) return makeExpr<LiteralExpr>(false);
     if (match({TokenType::TRUE})) return makeExpr<LiteralExpr>(true);
     if (match({TokenType::NIL})) return makeExpr<LiteralExpr>(nullptr);
+    if (match({TokenType::THIS})) return makeExpr<This>(previous());
 
     if (match({TokenType::NUMBER, TokenType::STRING})) 
     {
@@ -215,6 +229,7 @@ Stmt Parser::declaration()
 {
     try 
     {
+        if (match({TokenType::CLASS})) return classDeclaration();
         if (match({TokenType::FUN})) return function("function");
         if (match({TokenType::VAR})) return varDeclaration();
         return statement();
@@ -236,6 +251,26 @@ Stmt Parser::varDeclaration() {
 
     consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
     return std::make_unique<VarStmt>(std::move(name), std::move(initializer));
+}
+
+Stmt Parser::classDeclaration() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+
+    std::vector<std::unique_ptr<FunctionStmt>> methods;
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        // Parse the method using your existing function parser
+        Stmt methodStmt = function("method");
+        
+        // Extract the unique_ptr<FunctionStmt> out of the Stmt variant
+        auto methodPtr = std::get<std::unique_ptr<FunctionStmt>>(std::move(methodStmt));
+        
+        methods.push_back(std::move(methodPtr));
+    }
+
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+
+    return std::make_unique<ClassStmt>(std::move(name), std::move(methods));
 }
 
 Stmt Parser::statement() 

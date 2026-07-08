@@ -16,10 +16,12 @@ struct VarStmt;
 struct WhileStmt;
 struct FunctionStmt;
 struct ReturnStmt;
+struct ClassStmt;
 
 
 using Stmt = variant<
     unique_ptr<Block>,
+    unique_ptr<ClassStmt>,
     unique_ptr<ExpressionStmt>,
     unique_ptr<IfStmt>,
     unique_ptr<PrintStmt>,
@@ -90,4 +92,13 @@ struct ReturnStmt {
 
     ReturnStmt(Token keyword, std::optional<Expr> value) 
         : keyword(std::move(keyword)), value(std::move(value)) {}
+};
+
+struct ClassStmt {
+    Token name;
+    // We store these specifically as FunctionStmts, not generic Stmts
+    std::vector<std::unique_ptr<FunctionStmt>> methods;
+
+    ClassStmt(Token name, std::vector<std::unique_ptr<FunctionStmt>> methods)
+        : name(std::move(name)), methods(std::move(methods)) {}
 };

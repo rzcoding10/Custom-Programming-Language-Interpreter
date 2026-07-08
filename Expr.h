@@ -13,6 +13,9 @@ struct Unary;
 struct Variable;
 struct Assign;
 struct Call;
+struct Get;
+struct Set;
+struct This;
 
 
 using Expr = variant<
@@ -23,7 +26,10 @@ using Expr = variant<
     std::unique_ptr<Logical>,
     unique_ptr<Unary>,
     unique_ptr<Variable>,
-    unique_ptr<Call>
+    unique_ptr<Call>,
+    unique_ptr<Get>,
+    unique_ptr<Set>,
+    unique_ptr<This>
 >;
 
 
@@ -101,4 +107,27 @@ struct Call {
 
     Call(Expr callee, Token paren, std::vector<Expr> arguments)
         : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
+};
+
+struct Get {
+    Expr object;  // The expression on the left of the dot (e.g., 'bagel')
+    Token name;   // The property name on the right of the dot (e.g., 'flavor')
+
+    Get(Expr object, Token name)
+        : object(std::move(object)), name(std::move(name)) {}
+};
+
+struct Set {
+    Expr object;  // The expression on the left of the dot
+    Token name;   // The property name
+    Expr value;   // The value being assigned after the '='
+
+    Set(Expr object, Token name, Expr value)
+        : object(std::move(object)), name(std::move(name)), value(std::move(value)) {}
+};
+
+struct This {
+    Token keyword;
+
+    This(Token keyword) : keyword(std::move(keyword)) {}
 };

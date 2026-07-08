@@ -32,6 +32,7 @@ private:
     Stmt forStatement();
     Stmt function(string kind);
     Stmt returnStatement();
+    Stmt classDeclaration();
 
     Expr expression();
     Expr assignment();
