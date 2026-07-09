@@ -16,6 +16,7 @@ struct Call;
 struct Get;
 struct Set;
 struct This;
+struct Super; // <-- NEW
 
 
 using Expr = variant<
@@ -29,7 +30,8 @@ using Expr = variant<
     unique_ptr<Call>,
     unique_ptr<Get>,
     unique_ptr<Set>,
-    unique_ptr<This>
+    unique_ptr<This>,
+    unique_ptr<Super> // <-- NEW
 >;
 
 
@@ -110,17 +112,17 @@ struct Call {
 };
 
 struct Get {
-    Expr object;  // The expression on the left of the dot (e.g., 'bagel')
-    Token name;   // The property name on the right of the dot (e.g., 'flavor')
+    Expr object;  
+    Token name;   
 
     Get(Expr object, Token name)
         : object(std::move(object)), name(std::move(name)) {}
 };
 
 struct Set {
-    Expr object;  // The expression on the left of the dot
-    Token name;   // The property name
-    Expr value;   // The value being assigned after the '='
+    Expr object;  
+    Token name;   
+    Expr value;   
 
     Set(Expr object, Token name, Expr value)
         : object(std::move(object)), name(std::move(name)), value(std::move(value)) {}
@@ -130,4 +132,13 @@ struct This {
     Token keyword;
 
     This(Token keyword) : keyword(std::move(keyword)) {}
+};
+
+// --- NEW ---
+struct Super {
+    Token keyword;
+    Token method;
+
+    Super(Token keyword, Token method)
+        : keyword(std::move(keyword)), method(std::move(method)) {}
 };

@@ -96,9 +96,10 @@ struct ReturnStmt {
 
 struct ClassStmt {
     Token name;
+    std::unique_ptr<Variable> superclass; // <-- NEW
     // We store these specifically as FunctionStmts, not generic Stmts
     std::vector<std::unique_ptr<FunctionStmt>> methods;
 
-    ClassStmt(Token name, std::vector<std::unique_ptr<FunctionStmt>> methods)
-        : name(std::move(name)), methods(std::move(methods)) {}
+    ClassStmt(Token name, std::unique_ptr<Variable> superclass, std::vector<std::unique_ptr<FunctionStmt>> methods)
+        : name(std::move(name)), superclass(std::move(superclass)), methods(std::move(methods)) {}
 };

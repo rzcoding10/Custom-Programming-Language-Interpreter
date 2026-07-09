@@ -21,10 +21,10 @@ private:
 
     // Prevents returning from outside of a function
     // Add METHOD to track when we are inside a class
-    enum class FunctionType { NONE, FUNCTION, METHOD };
+    enum class FunctionType { NONE, FUNCTION, METHOD, INITIALIZER };
     FunctionType currentFunction = FunctionType::NONE;
 
-    enum class ClassType { NONE, CLASS };
+    enum class ClassType { NONE, CLASS, SUBCLASS };
     ClassType currentClass = ClassType::NONE;
 
 public:
@@ -154,6 +154,9 @@ private:
             Lox::error(stmt->keyword, "Can't return from top-level code.");
         }
         if (stmt->value.has_value()) {
+            if (currentFunction == FunctionType::INITIALIZER) {
+                Lox::error(stmt->keyword, "Can't return a value from an initializer.");
+            }
             resolve(stmt->value.value());
         }
     }
@@ -166,16 +169,42 @@ private:
         declare(stmt->name);
         define(stmt->name);
 
+        if (stmt->superclass != nullptr && stmt->name.lexeme == stmt->superclass->name.lexeme) {
+            Lox::error(stmt->superclass->name, "A class can't inherit from itself.");
+        }
+
+        if (stmt->superclass != nullptr) {
+            currentClass = ClassType::SUBCLASS; // <-- NEW
+            this->visit(stmt->superclass);
+        }
+
+        // --- NEW: Inject 'super' scope ---
+        if (stmt->superclass != nullptr) {
+            beginScope();
+            scopes.back()["super"] = true;
+        }
+        // ---------------------------------
+
         // Inject 'this' into the scope BEFORE resolving methods
         beginScope();
         scopes.back()["this"] = true; 
 
         for (const auto& method : stmt->methods) {
             FunctionType declaration = FunctionType::METHOD;
+            if (method->name.lexeme == "init") {
+                declaration = FunctionType::INITIALIZER;
+            }
             resolveFunction(method.get(), declaration);
         }
 
-        endScope();
+        endScope(); // Closes 'this' scope
+        
+        // --- NEW: Close 'super' scope ---
+        if (stmt->superclass != nullptr) {
+            endScope(); 
+        }
+        // --------------------------------
+
         currentClass = enclosingClass;
     }
 
@@ -242,6 +271,17 @@ private:
             Lox::error(expr->keyword, "Can't use 'this' outside of a class.");
             return;
         }
+        resolveLocal(expr.get(), expr->keyword);
+    }
+
+    void visit(const std::unique_ptr<Super>& expr) 
+    {
+        if (currentClass == ClassType::NONE) {
+            Lox::error(expr->keyword, "Can't use 'super' outside of a class.");
+        } else if (currentClass != ClassType::SUBCLASS) {
+            Lox::error(expr->keyword, "Can't use 'super' in a class with no superclass.");
+        }
+        
         resolveLocal(expr.get(), expr->keyword);
     }
 };

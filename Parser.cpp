@@ -180,6 +180,13 @@ Expr Parser::primary()
     if (match({TokenType::NIL})) return makeExpr<LiteralExpr>(nullptr);
     if (match({TokenType::THIS})) return makeExpr<This>(previous());
 
+    if (match({TokenType::SUPER})) {
+        Token keyword = previous();
+        consume(TokenType::DOT, "Expect '.' after 'super'.");
+        Token method = consume(TokenType::IDENTIFIER, "Expect superclass method name.");
+        return makeExpr<Super>(std::move(keyword), std::move(method));
+    }
+
     if (match({TokenType::NUMBER, TokenType::STRING})) 
     {
         return makeExpr<LiteralExpr>(previous().literal);
@@ -255,6 +262,15 @@ Stmt Parser::varDeclaration() {
 
 Stmt Parser::classDeclaration() {
     Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+
+    // --- NEW: Parse the optional superclass ---
+    std::unique_ptr<Variable> superclass = nullptr;
+    if (match({TokenType::LESS})) {
+        consume(TokenType::IDENTIFIER, "Expect superclass name.");
+        superclass = std::make_unique<Variable>(previous());
+    }
+    // -----------------------------------------
+
     consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
 
     std::vector<std::unique_ptr<FunctionStmt>> methods;
@@ -270,7 +286,8 @@ Stmt Parser::classDeclaration() {
 
     consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
 
-    return std::make_unique<ClassStmt>(std::move(name), std::move(methods));
+    // Pass the superclass into the ClassStmt constructor
+    return std::make_unique<ClassStmt>(std::move(name), std::move(superclass), std::move(methods));
 }
 
 Stmt Parser::statement() 

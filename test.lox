@@ -1,9 +1,13 @@
-class Bagel {
-  taste() {
-    print "The " + this.flavor + " bagel is delicious!";
+class Empty {}
+
+class Child < Empty {
+  test() {
+    super.ghostMethod();
   }
 }
 
-var bagel = Bagel();
-bagel.flavor = "everything";
-bagel.taste(); // The everything bagel is delicious!
+Child().test();
+
+// Expect:
+// Undefined property 'ghostMethod'.
+// [line 5]

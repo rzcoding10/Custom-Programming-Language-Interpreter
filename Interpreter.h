@@ -43,10 +43,11 @@ class LoxFunction : public LoxCallable
 private:
     FunctionStmt* declaration;
     std::shared_ptr<Environment> closure;
+    bool isInitializer;
 
 public:
-    LoxFunction(FunctionStmt* declaration, std::shared_ptr<Environment> closure) 
-        : declaration(declaration), closure(std::move(closure)) {}
+    LoxFunction(FunctionStmt* declaration, std::shared_ptr<Environment> closure, bool isInitializer) 
+        : declaration(declaration), closure(std::move(closure)), isInitializer(isInitializer) {}
         
     int arity() override { return declaration->params.size(); }
     
@@ -182,21 +183,48 @@ private:
             }
             else if constexpr (is_same_v<T, FunctionStmt>) 
             {
-                std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get(),environment);
+                std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get(), environment, false);
                 environment->define(node->name.lexeme, function);
             }
             else if constexpr (is_same_v<T, ClassStmt>) 
             {
+                std::shared_ptr<LoxClass> superclass = nullptr;
+                if (node->superclass != nullptr) {
+                    Literal superclassObj = lookUpVariable(node->superclass->name, node->superclass.get());
+                    
+                    if (holds_alternative<std::shared_ptr<LoxCallable>>(superclassObj)) {
+                        auto callable = std::get<std::shared_ptr<LoxCallable>>(superclassObj);
+                        superclass = std::dynamic_pointer_cast<LoxClass>(callable);
+                    }
+                    
+                    if (superclass == nullptr) {
+                        throw RuntimeError(node->superclass->name, "Superclass must be a class.");
+                    }
+                }
+
+                // --- NEW: Inject the superclass environment ---
+                std::shared_ptr<Environment> previous = environment;
+                if (superclass != nullptr) {
+                    environment = std::make_shared<Environment>(environment);
+                    environment->define("super", superclass);
+                }
+                // ----------------------------------------------
+
                 std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
                 
                 // Convert the AST nodes into living LoxFunction objects
                 for (const auto& method : node->methods) {
-                    auto function = std::make_shared<LoxFunction>(method.get(), environment);
+                    bool isInitializer = (method->name.lexeme == "init");
+                    auto function = std::make_shared<LoxFunction>(method.get(), environment, isInitializer);
                     methods[method->name.lexeme] = function;
                 }
 
-                // Hand the methods map to the class factory
-                std::shared_ptr<LoxCallable> klass = std::make_shared<LoxClass>(node->name.lexeme, std::move(methods));
+                std::shared_ptr<LoxCallable> klass = std::make_shared<LoxClass>(node->name.lexeme, superclass, std::move(methods));
+                
+                // --- NEW: Restore the original environment before defining the class ---
+                environment = previous;
+                // -----------------------------------------------------------------------
+                
                 environment->define(node->name.lexeme, klass);
             }
             else if constexpr (is_same_v<T, ReturnStmt>) // <-- Fix is right here!
@@ -375,6 +403,30 @@ public:
             {
                 return lookUpVariable(node->keyword, node.get());
             }
+            else if constexpr (is_same_v<T, Super>) 
+            {
+                auto it = locals.find(node.get());
+                int distance = it->second;
+
+                // 1. Look up the superclass using our 5-argument fake token
+                Token superToken(TokenType::SUPER, "super", nullptr, 0, 0);
+                Literal superclassLit = environment->getAt(distance, superToken);
+                auto superclass = std::dynamic_pointer_cast<LoxClass>(std::get<std::shared_ptr<LoxCallable>>(superclassLit));
+
+                // 2. Look up the instance ('this' is always one level closer than 'super')
+                Token thisToken(TokenType::THIS, "this", nullptr, 0, 0);
+                Literal objectLit = environment->getAt(distance - 1, thisToken);
+                auto object = std::get<std::shared_ptr<LoxInstance>>(objectLit);
+
+                // 3. Find the method in the parent class
+                std::shared_ptr<LoxFunction> method = superclass->findMethod(node->method.lexeme);
+                if (method == nullptr) {
+                    throw RuntimeError(node->method, "Undefined property '" + node->method.lexeme + "'.");
+                }
+
+                // 4. Bind the parent's method to the child's instance
+                return std::shared_ptr<LoxCallable>(method->bind(object));
+            }
             else if constexpr (is_same_v<T, Logical>) 
             {
                 Literal left = evaluate(node->left);
@@ -408,34 +460,28 @@ inline Literal ClockCallable::call(Interpreter& interpreter, std::vector<Literal
     return std::chrono::duration<double>(now).count(); 
 }
 
-inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
-    auto environment = std::make_shared<Environment>(closure);
-    
-    for (size_t i = 0; i < declaration->params.size(); ++i) {
-        environment->define(declaration->params[i].lexeme, arguments[i]);
-    }
-    
-    try {
-        interpreter.executeBlock(declaration->body, environment);
-    } 
-    catch (ReturnException& returnValue) {
-        // We caught the escape hatch! Return the payload.
-        return returnValue.value;
-    }
-    
-    // If the function finishes without hitting a return statement, it implicitly returns nil.
-    return nullptr; 
+inline int LoxClass::arity() {
+    std::shared_ptr<LoxFunction> initializer = findMethod("init");
+    if (initializer == nullptr) return 0;
+    return initializer->arity();
 }
 
 inline Literal LoxClass::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
-    return std::make_shared<LoxInstance>(shared_from_this());
+    auto instance = std::make_shared<LoxInstance>(shared_from_this());
+    
+    std::shared_ptr<LoxFunction> initializer = findMethod("init");
+    if (initializer != nullptr) {
+        initializer->bind(instance)->call(interpreter, arguments);
+    }
+    
+    return instance;
 }
 
 // --- THE BACKPACK BUILDER ---
 inline std::shared_ptr<LoxFunction> LoxFunction::bind(std::shared_ptr<LoxInstance> instance) {
     auto environment = std::make_shared<Environment>(closure);
     environment->define("this", instance);
-    return std::make_shared<LoxFunction>(declaration, environment);
+    return std::make_shared<LoxFunction>(declaration, environment, isInitializer);
 }
 
 // --- UPDATED METHOD LOOKUP ---
@@ -447,7 +493,6 @@ inline Literal LoxInstance::get(const Token& name) {
 
     std::shared_ptr<LoxFunction> method = klass->findMethod(name.lexeme);
     if (method != nullptr) {
-        // Here is the magic! We bind the instance before handing the method back.
         return std::shared_ptr<LoxCallable>(method->bind(shared_from_this())); 
     }
 
@@ -456,4 +501,32 @@ inline Literal LoxInstance::get(const Token& name) {
 
 inline void LoxInstance::set(const Token& name, Literal value) {
     fields[name.lexeme] = std::move(value);
+}
+
+inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
+    auto environment = std::make_shared<Environment>(closure);
+    
+    for (size_t i = 0; i < declaration->params.size(); ++i) {
+        environment->define(declaration->params[i].lexeme, arguments[i]);
+    }
+    
+    try {
+        interpreter.executeBlock(declaration->body, environment);
+    } 
+    catch (ReturnException& returnValue) {
+        if (isInitializer) {
+            // Notice the extra 0 for the column argument to match your Token struct exactly
+            Token thisToken(TokenType::THIS, "this", nullptr, 0, 0); 
+            return closure->getAt(0, thisToken);
+        }
+        return returnValue.value;
+    }
+    
+    if (isInitializer) {
+        // Notice the extra 0 for the column argument to match your Token struct exactly
+        Token thisToken(TokenType::THIS, "this", nullptr, 0, 0); 
+        return closure->getAt(0, thisToken);
+    }
+    
+    return nullptr; 
 }
