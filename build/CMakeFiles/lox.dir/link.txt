@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/lox.dir/src/Lox.cpp.o CMakeFiles/lox.dir/src/Parser.cpp.o CMakeFiles/lox.dir/src/Scanner.cpp.o CMakeFiles/lox.dir/src/main.cpp.o -o lox
