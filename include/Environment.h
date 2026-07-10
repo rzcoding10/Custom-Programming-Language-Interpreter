@@ -6,7 +6,6 @@
 #include "RuntimeError.h"
 #include "Expr.h"
 
-
 class Environment {
 private:
     std::unordered_map<std::string, Literal> values;
@@ -20,15 +19,15 @@ private:
     }
 
 public:
-    shared_ptr<Environment> enclosing;
+    std::shared_ptr<Environment> enclosing;
+    
     Environment() : enclosing(nullptr) {}
-    Environment(shared_ptr<Environment> enclosing) : enclosing(enclosing) {}
+    Environment(std::shared_ptr<Environment> enclosing) : enclosing(std::move(enclosing)) {} // <-- Fixed here!
 
     Literal getAt(int distance, const Token& name) {
         return ancestor(distance)->values[name.lexeme];
     }
 
-    // NEW: Directly assign the value at the exact resolved distance
     void assignAt(int distance, const Token& name, Literal value) {
         ancestor(distance)->values[name.lexeme] = value;
     }

@@ -14,9 +14,9 @@
 #include <chrono>
 #include <exception>
 #include <map>
+#include <cstddef>
 
 class Interpreter;
-using namespace std;
 
 class ReturnException : public std::exception {
 public:
@@ -90,19 +90,19 @@ private:
     }
 
     void checkNumberOperand(const Token& op, const Literal& operand) {
-        if (holds_alternative<double>(operand)) return;
+        if (std::holds_alternative<double>(operand)) return;
         throw RuntimeError(op, "Operand must be a number.");
     }
 
     void checkNumberOperands(const Token& op, const Literal& left, const Literal& right) {
-        if (holds_alternative<double>(left) && holds_alternative<double>(right)) return;
+        if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) return;
         throw RuntimeError(op, "Operands must be numbers.");
     }
 
     bool isTruthy(const Literal& object) 
     {
-        if (holds_alternative<nullptr_t>(object)) return false;
-        if (holds_alternative<bool>(object)) return get<bool>(object);
+        if (std::holds_alternative<std::nullptr_t>(object)) return false;
+        if (std::holds_alternative<bool>(object)) return std::get<bool>(object);
         return true;
     }
     
@@ -111,26 +111,26 @@ private:
         return a == b; 
     }
     
-    string stringify(const Literal& value) 
+    std::string stringify(const Literal& value) 
     {
-        return visit([](const auto& val) -> string {
-            using ValT = decay_t<decltype(val)>;
+        return std::visit([](const auto& val) -> std::string {
+            using ValT = std::decay_t<decltype(val)>;
             
-            if constexpr (is_same_v<ValT, nullptr_t>) return "nil";
-            else if constexpr (is_same_v<ValT, bool>) return val ? "true" : "false";
-            else if constexpr (is_same_v<ValT, string>) return val;
-            else if constexpr (is_same_v<ValT, double>) 
+            if constexpr (std::is_same_v<ValT, std::nullptr_t>) return "nil";
+            else if constexpr (std::is_same_v<ValT, bool>) return val ? "true" : "false";
+            else if constexpr (std::is_same_v<ValT, std::string>) return val;
+            else if constexpr (std::is_same_v<ValT, double>) 
             {
-                string text = to_string(val);
-                text.erase(text.find_last_not_of('0') + 1, string::npos);
+                std::string text = std::to_string(val);
+                text.erase(text.find_last_not_of('0') + 1, std::string::npos);
                 if (text.back() == '.') text.pop_back();
                 return text;
             }
-            else if constexpr (is_same_v<ValT, std::shared_ptr<LoxCallable>>) 
+            else if constexpr (std::is_same_v<ValT, std::shared_ptr<LoxCallable>>) 
             {
                 return val->toString();
             }
-            else if constexpr (is_same_v<ValT, std::shared_ptr<LoxInstance>>) 
+            else if constexpr (std::is_same_v<ValT, std::shared_ptr<LoxInstance>>) 
             {
                 return val->toString();
             }
@@ -140,28 +140,28 @@ private:
 
     void execute(const Stmt& stmt) 
     {
-        visit([this](const auto& node) {
-            using T = decay_t<decltype(*node)>;
+        std::visit([this](const auto& node) {
+            using T = std::decay_t<decltype(*node)>;
 
-            if constexpr (is_same_v<T, PrintStmt>) {
+            if constexpr (std::is_same_v<T, PrintStmt>) {
                 Literal value = evaluate(node->expression);
-                cout << stringify(value) << "\n";
+                std::cout << stringify(value) << "\n";
             } 
-            else if constexpr (is_same_v<T, ExpressionStmt>) {
+            else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                 evaluate(node->expression); 
             }
-            else if constexpr (is_same_v<T, VarStmt>) {
+            else if constexpr (std::is_same_v<T, VarStmt>) {
                 Literal value = nullptr;
                 if (node->initializer.has_value()) {
                     value = evaluate(node->initializer.value());
                 }
                 environment->define(node->name.lexeme, value);
             }
-            else if constexpr (is_same_v<T, Block>) 
+            else if constexpr (std::is_same_v<T, Block>) 
             {
                 executeBlock(node->statements, std::make_shared<Environment>(environment));
             }
-            else if constexpr (is_same_v<T, IfStmt>) 
+            else if constexpr (std::is_same_v<T, IfStmt>) 
             {
                 Literal conditionResult = evaluate(node->condition);
 
@@ -174,25 +174,25 @@ private:
                     execute(node->elseBranch.value());
                 }
             }
-            else if constexpr (is_same_v<T, WhileStmt>) 
+            else if constexpr (std::is_same_v<T, WhileStmt>) 
             {
                 while (isTruthy(evaluate(node->condition))) 
                 {
                     execute(node->body);
                 }
             }
-            else if constexpr (is_same_v<T, FunctionStmt>) 
+            else if constexpr (std::is_same_v<T, FunctionStmt>) 
             {
                 std::shared_ptr<LoxCallable> function = std::make_shared<LoxFunction>(node.get(), environment, false);
                 environment->define(node->name.lexeme, function);
             }
-            else if constexpr (is_same_v<T, ClassStmt>) 
+            else if constexpr (std::is_same_v<T, ClassStmt>) 
             {
                 std::shared_ptr<LoxClass> superclass = nullptr;
                 if (node->superclass != nullptr) {
                     Literal superclassObj = lookUpVariable(node->superclass->name, node->superclass.get());
                     
-                    if (holds_alternative<std::shared_ptr<LoxCallable>>(superclassObj)) {
+                    if (std::holds_alternative<std::shared_ptr<LoxCallable>>(superclassObj)) {
                         auto callable = std::get<std::shared_ptr<LoxCallable>>(superclassObj);
                         superclass = std::dynamic_pointer_cast<LoxClass>(callable);
                     }
@@ -202,17 +202,14 @@ private:
                     }
                 }
 
-                // --- NEW: Inject the superclass environment ---
                 std::shared_ptr<Environment> previous = environment;
                 if (superclass != nullptr) {
                     environment = std::make_shared<Environment>(environment);
                     environment->define("super", superclass);
                 }
-                // ----------------------------------------------
 
                 std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
                 
-                // Convert the AST nodes into living LoxFunction objects
                 for (const auto& method : node->methods) {
                     bool isInitializer = (method->name.lexeme == "init");
                     auto function = std::make_shared<LoxFunction>(method.get(), environment, isInitializer);
@@ -221,16 +218,13 @@ private:
 
                 std::shared_ptr<LoxCallable> klass = std::make_shared<LoxClass>(node->name.lexeme, superclass, std::move(methods));
                 
-                // --- NEW: Restore the original environment before defining the class ---
                 environment = previous;
-                // -----------------------------------------------------------------------
                 
                 environment->define(node->name.lexeme, klass);
             }
-            else if constexpr (is_same_v<T, ReturnStmt>) // <-- Fix is right here!
+            else if constexpr (std::is_same_v<T, ReturnStmt>)
             {
                 Literal value = nullptr;
-                // If the return statement actually has a value (not just 'return;')
                 if (node->value.has_value()) {
                     value = evaluate(node->value.value());
                 }
@@ -240,7 +234,7 @@ private:
         }, stmt);
     }
 public:
-    void executeBlock(const vector<Stmt>& statements, std::shared_ptr<Environment> newEnvironment) {
+    void executeBlock(const std::vector<Stmt>& statements, std::shared_ptr<Environment> newEnvironment) {
         std::shared_ptr<Environment> previous = this->environment;
 
         try {
@@ -260,19 +254,19 @@ public:
 public:
     Literal evaluate(const Expr& expr) 
     {
-        return visit([this](const auto& node) -> Literal 
+        return std::visit([this](const auto& node) -> Literal 
         {
-            using T = decay_t<decltype(*node)>;
+            using T = std::decay_t<decltype(*node)>;
 
-            if constexpr (is_same_v<T, LiteralExpr>) 
+            if constexpr (std::is_same_v<T, LiteralExpr>) 
             {
                 return node->value;
             } 
-            else if constexpr (is_same_v<T, Grouping>) 
+            else if constexpr (std::is_same_v<T, Grouping>) 
             {
                 return evaluate(node->expression);
             } 
-            else if constexpr (is_same_v<T, Unary>) 
+            else if constexpr (std::is_same_v<T, Unary>) 
             {
                 Literal right = evaluate(node->right);
 
@@ -282,12 +276,12 @@ public:
                         return !isTruthy(right);
                     case TokenType::MINUS:
                         checkNumberOperand(node->op, right);
-                        return -get<double>(right);
+                        return -std::get<double>(right);
                     default:
                         return nullptr;
                 }
             }
-            else if constexpr (is_same_v<T, Binary>) 
+            else if constexpr (std::is_same_v<T, Binary>) 
             {
                 Literal left = evaluate(node->left);
                 Literal right = evaluate(node->right);
@@ -296,35 +290,35 @@ public:
                 {
                     case TokenType::MINUS:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) - get<double>(right);
+                        return std::get<double>(left) - std::get<double>(right);
                     case TokenType::SLASH:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) / get<double>(right);
+                        return std::get<double>(left) / std::get<double>(right);
                     case TokenType::STAR:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) * get<double>(right);
+                        return std::get<double>(left) * std::get<double>(right);
                     case TokenType::PLUS:
-                        if (holds_alternative<double>(left) && holds_alternative<double>(right)) 
+                        if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) 
                         {
-                            return get<double>(left) + get<double>(right);
+                            return std::get<double>(left) + std::get<double>(right);
                         }
-                        if (holds_alternative<string>(left) && holds_alternative<string>(right)) 
+                        if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right)) 
                         {
-                            return get<string>(left) + get<string>(right);
+                            return std::get<std::string>(left) + std::get<std::string>(right);
                         }
                         throw RuntimeError(node->op, "Operands must be two numbers or two strings.");
                     case TokenType::GREATER:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) > get<double>(right);
+                        return std::get<double>(left) > std::get<double>(right);
                     case TokenType::GREATER_EQUAL:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) >= get<double>(right);
+                        return std::get<double>(left) >= std::get<double>(right);
                     case TokenType::LESS:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) < get<double>(right);
+                        return std::get<double>(left) < std::get<double>(right);
                     case TokenType::LESS_EQUAL:
                         checkNumberOperands(node->op, left, right);
-                        return get<double>(left) <= get<double>(right);
+                        return std::get<double>(left) <= std::get<double>(right);
                     case TokenType::BANG_EQUAL:
                         return !isEqual(left, right);
                     case TokenType::EQUAL_EQUAL:
@@ -333,16 +327,14 @@ public:
                         return nullptr;
                 }
             }
-            else if constexpr (is_same_v<T, Variable>) 
+            else if constexpr (std::is_same_v<T, Variable>) 
             {
-                // CHANGED: Use the helper instead of environment->get()
                 return lookUpVariable(node->name, node.get());
             }
-            else if constexpr (is_same_v<T, Assign>) 
+            else if constexpr (std::is_same_v<T, Assign>) 
             {
                 Literal value = evaluate(node->value);
                 
-                // CHANGED: Use assignAt if resolved, otherwise global assign
                 auto it = locals.find(node.get());
                 if (it != locals.end()) {
                     int distance = it->second;
@@ -353,7 +345,7 @@ public:
                 
                 return value;
             }
-            else if constexpr (is_same_v<T, Call>) 
+            else if constexpr (std::is_same_v<T, Call>) 
             {
                 Literal callee = evaluate(node->callee);
 
@@ -376,7 +368,7 @@ public:
 
                 return function->call(*this, arguments);
             }
-            else if constexpr (is_same_v<T, Get>) 
+            else if constexpr (std::is_same_v<T, Get>) 
             {
                 Literal object = evaluate(node->object);
                 if (std::holds_alternative<std::shared_ptr<LoxInstance>>(object)) 
@@ -386,7 +378,7 @@ public:
 
                 throw RuntimeError(node->name, "Only instances have properties.");
             }
-            else if constexpr (is_same_v<T, Set>) 
+            else if constexpr (std::is_same_v<T, Set>) 
             {
                 Literal object = evaluate(node->object);
 
@@ -399,35 +391,31 @@ public:
                 std::get<std::shared_ptr<LoxInstance>>(object)->set(node->name, value);
                 return value;
             }
-            else if constexpr (is_same_v<T, This>) 
+            else if constexpr (std::is_same_v<T, This>) 
             {
                 return lookUpVariable(node->keyword, node.get());
             }
-            else if constexpr (is_same_v<T, Super>) 
+            else if constexpr (std::is_same_v<T, Super>) 
             {
                 auto it = locals.find(node.get());
                 int distance = it->second;
 
-                // 1. Look up the superclass using our 5-argument fake token
                 Token superToken(TokenType::SUPER, "super", nullptr, 0, 0);
                 Literal superclassLit = environment->getAt(distance, superToken);
                 auto superclass = std::dynamic_pointer_cast<LoxClass>(std::get<std::shared_ptr<LoxCallable>>(superclassLit));
 
-                // 2. Look up the instance ('this' is always one level closer than 'super')
                 Token thisToken(TokenType::THIS, "this", nullptr, 0, 0);
                 Literal objectLit = environment->getAt(distance - 1, thisToken);
                 auto object = std::get<std::shared_ptr<LoxInstance>>(objectLit);
 
-                // 3. Find the method in the parent class
                 std::shared_ptr<LoxFunction> method = superclass->findMethod(node->method.lexeme);
                 if (method == nullptr) {
                     throw RuntimeError(node->method, "Undefined property '" + node->method.lexeme + "'.");
                 }
 
-                // 4. Bind the parent's method to the child's instance
                 return std::shared_ptr<LoxCallable>(method->bind(object));
             }
-            else if constexpr (is_same_v<T, Logical>) 
+            else if constexpr (std::is_same_v<T, Logical>) 
             {
                 Literal left = evaluate(node->left);
 
@@ -443,14 +431,14 @@ public:
         }, expr);
     }
     
-    void interpret(const vector<Stmt>& statements) 
+    void interpret(const std::vector<Stmt>& statements) 
     {
         try {
             for (const Stmt& statement : statements) {
                 execute(statement);
             }
         } catch (const RuntimeError& error) {
-            cerr << error.what() << "\n[line " << error.token.line << "]\n";
+            std::cerr << error.what() << "\n[line " << error.token.line << "]\n";
         }
     }
 };
@@ -477,14 +465,12 @@ inline Literal LoxClass::call(Interpreter& interpreter, std::vector<Literal>& ar
     return instance;
 }
 
-// --- THE BACKPACK BUILDER ---
 inline std::shared_ptr<LoxFunction> LoxFunction::bind(std::shared_ptr<LoxInstance> instance) {
     auto environment = std::make_shared<Environment>(closure);
     environment->define("this", instance);
     return std::make_shared<LoxFunction>(declaration, environment, isInitializer);
 }
 
-// --- UPDATED METHOD LOOKUP ---
 inline Literal LoxInstance::get(const Token& name) {
     auto it = fields.find(name.lexeme);
     if (it != fields.end()) {
@@ -506,7 +492,7 @@ inline void LoxInstance::set(const Token& name, Literal value) {
 inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>& arguments) {
     auto environment = std::make_shared<Environment>(closure);
     
-    for (size_t i = 0; i < declaration->params.size(); ++i) {
+    for (std::size_t i = 0; i < declaration->params.size(); ++i) {
         environment->define(declaration->params[i].lexeme, arguments[i]);
     }
     
@@ -515,7 +501,6 @@ inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>&
     } 
     catch (ReturnException& returnValue) {
         if (isInitializer) {
-            // Notice the extra 0 for the column argument to match your Token struct exactly
             Token thisToken(TokenType::THIS, "this", nullptr, 0, 0); 
             return closure->getAt(0, thisToken);
         }
@@ -523,7 +508,6 @@ inline Literal LoxFunction::call(Interpreter& interpreter, std::vector<Literal>&
     }
     
     if (isInitializer) {
-        // Notice the extra 0 for the column argument to match your Token struct exactly
         Token thisToken(TokenType::THIS, "this", nullptr, 0, 0); 
         return closure->getAt(0, thisToken);
     }

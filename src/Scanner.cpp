@@ -1,5 +1,7 @@
 #include "Scanner.h"
 
+using namespace std;
+
 Scanner::Scanner(const string& source) : source(source) {}
 
 bool Scanner::isAtEnd()
@@ -100,7 +102,7 @@ void Scanner::addToken(TokenType type, Literal literal)
 {
     string text = source.substr(start, current - start);
     int startcolumn = currentcolumn - (current - start);
-    tokens.push_back(Token(type, text, move(literal), line, startcolumn));
+    tokens.push_back(Token(type, text, std::move(literal), line, startcolumn));
 }
 
 void Scanner::scanToken()

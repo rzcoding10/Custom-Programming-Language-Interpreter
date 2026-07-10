@@ -6,12 +6,12 @@
 #include <memory>
 #include "LoxCallable.h"
 
-class LoxFunction; // Forward declaration
+class LoxFunction;
 
 class LoxClass : public LoxCallable, public std::enable_shared_from_this<LoxClass> {
 public:
     std::string name;
-    std::shared_ptr<LoxClass> superclass; // <-- NEW
+    std::shared_ptr<LoxClass> superclass;
     std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
 
     LoxClass(std::string name, std::shared_ptr<LoxClass> superclass, std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods) 
@@ -30,7 +30,6 @@ public:
             return methods.at(name);
         }
         
-        // --- NEW: Walk up the inheritance chain ---
         if (superclass != nullptr) {
             return superclass->findMethod(name);
         }

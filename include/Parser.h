@@ -8,29 +8,27 @@
 #include <initializer_list>
 #include <string>
 
-using namespace std;
-
 class Parser 
 {
 private:
-    const vector<Token> tokens;
+    const std::vector<Token> tokens;
     int current = 0;
 
-    class ParseError : public runtime_error {
+    class ParseError : public std::runtime_error {
     public:
-        ParseError() : runtime_error("Parse Error") {}
+        ParseError() : std::runtime_error("Parse Error") {}
     };
 
     Stmt declaration();
     Stmt varDeclaration();
     Stmt statement();
-    vector<Stmt> block();
+    std::vector<Stmt> block();
     Stmt printStatement();
     Stmt expressionStatement();
     Stmt ifStatement();
     Stmt whileStatement();
     Stmt forStatement();
-    Stmt function(string kind);
+    Stmt function(std::string kind);
     Stmt returnStatement();
     Stmt classDeclaration();
 
@@ -47,7 +45,7 @@ private:
     Expr call();
     Expr finishCall(Expr callee);
 
-    bool match(initializer_list<TokenType> types);
+    bool match(std::initializer_list<TokenType> types);
     bool check(TokenType type);
     Token advance();
     bool isAtEnd();
@@ -55,11 +53,11 @@ private:
     Token previous();
     void synchronize();
 
-    Token consume(TokenType type, const string& message);
-    ParseError error(Token token, const string& message);
+    Token consume(TokenType type, const std::string& message);
+    ParseError error(Token token, const std::string& message);
 
 public:
-    Parser(const vector<Token>& tokens);
+    Parser(const std::vector<Token>& tokens);
 
-    vector<Stmt> parse();
+    std::vector<Stmt> parse();
 };

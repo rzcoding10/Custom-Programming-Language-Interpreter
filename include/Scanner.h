@@ -3,16 +3,15 @@
 #include "Lox.h"
 #include <string>
 #include <vector>
-
-using namespace std;
+#include <cstddef>
 
 class Scanner
 {
 private:
-    const string source;
-    vector<Token> tokens;
-    size_t start = 0;
-    size_t current = 0;
+    const std::string source;
+    std::vector<Token> tokens;
+    std::size_t start = 0;
+    std::size_t current = 0;
     int line = 1;
     int currentcolumn = 1;
 
@@ -32,6 +31,6 @@ private:
     void scanToken();
 
 public:
-    Scanner(const string& source);
-    vector<Token> scanTokens();
+    Scanner(const std::string& source);
+    std::vector<Token> scanTokens();
 };

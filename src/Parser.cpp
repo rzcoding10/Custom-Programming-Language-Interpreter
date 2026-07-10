@@ -1,6 +1,8 @@
 #include "Parser.h"
 #include "Lox.h"
 
+using namespace std;
+
 Parser::Parser(const vector<Token>& tokens) : tokens(tokens) 
 {
 }
@@ -75,7 +77,7 @@ Expr Parser::equality()
         Expr right = comparison();
         
        
-        expr = makeExpr<Binary>(move(expr), op, move(right));
+        expr = makeExpr<Binary>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -89,7 +91,7 @@ Expr Parser::comparison()
     {
         Token op = previous();
         Expr right = term();
-        expr = makeExpr<Binary>(move(expr), op, move(right));
+        expr = makeExpr<Binary>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -103,7 +105,7 @@ Expr Parser::term()
     {
         Token op = previous();
         Expr right = factor();
-        expr = makeExpr<Binary>(move(expr), op, move(right));
+        expr = makeExpr<Binary>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -117,7 +119,7 @@ Expr Parser::factor()
     {
         Token op = previous();
         Expr right = unary();
-        expr = makeExpr<Binary>(move(expr), op, move(right));
+        expr = makeExpr<Binary>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -196,7 +198,7 @@ Expr Parser::primary()
     {
         Expr expr = expression();
         consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-        return makeExpr<Grouping>(move(expr));
+        return makeExpr<Grouping>(std::move(expr));
     }
 
     if (match({TokenType::IDENTIFIER})) {
@@ -263,22 +265,18 @@ Stmt Parser::varDeclaration() {
 Stmt Parser::classDeclaration() {
     Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
 
-    // --- NEW: Parse the optional superclass ---
     std::unique_ptr<Variable> superclass = nullptr;
     if (match({TokenType::LESS})) {
         consume(TokenType::IDENTIFIER, "Expect superclass name.");
         superclass = std::make_unique<Variable>(previous());
     }
-    // -----------------------------------------
 
     consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
 
     std::vector<std::unique_ptr<FunctionStmt>> methods;
     while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
-        // Parse the method using your existing function parser
         Stmt methodStmt = function("method");
         
-        // Extract the unique_ptr<FunctionStmt> out of the Stmt variant
         auto methodPtr = std::get<std::unique_ptr<FunctionStmt>>(std::move(methodStmt));
         
         methods.push_back(std::move(methodPtr));
@@ -286,7 +284,6 @@ Stmt Parser::classDeclaration() {
 
     consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
 
-    // Pass the superclass into the ClassStmt constructor
     return std::make_unique<ClassStmt>(std::move(name), std::move(superclass), std::move(methods));
 }
 
@@ -466,7 +463,7 @@ Stmt Parser::function(std::string kind)
 
 Stmt Parser::returnStatement() {
     Token keyword = previous(); 
-    std::optional<Expr> value = std::nullopt; // <-- FIX 1: Added <Expr>
+    std::optional<Expr> value = std::nullopt;
     
     if (!check(TokenType::SEMICOLON)) {
         value = expression();
@@ -474,7 +471,7 @@ Stmt Parser::returnStatement() {
     
     consume(TokenType::SEMICOLON, "Expect ';' after return value.");
     
-    return std::make_unique<ReturnStmt>(std::move(keyword), std::move(value));// <-- FIX 2: Wrapped in make_unique
+    return std::make_unique<ReturnStmt>(std::move(keyword), std::move(value));
 }
 
 void Parser::synchronize() 

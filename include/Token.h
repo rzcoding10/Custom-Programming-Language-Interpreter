@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <memory>       
 
-using namespace std;
 class LoxCallable;
 class LoxInstance;
 
@@ -63,7 +62,7 @@ enum class TokenType
     EOF_TOKEN
 };
 
-inline const unordered_map<string, TokenType> keywords =
+inline const std::unordered_map<std::string, TokenType> keywords =
 {
     {"and",    TokenType::AND},
     {"class",  TokenType::CLASS},
@@ -82,31 +81,32 @@ inline const unordered_map<string, TokenType> keywords =
     {"var",    TokenType::VAR},
     {"while",  TokenType::WHILE}
 };
-using Literal = variant<nullptr_t, double, string, bool, std::shared_ptr<LoxCallable>, std::shared_ptr<LoxInstance>>;
+
+using Literal = std::variant<std::nullptr_t, double, std::string, bool, std::shared_ptr<LoxCallable>, std::shared_ptr<LoxInstance>>;
 
 class Token
 {
 public:
     const TokenType type;
-    const string lexeme;
+    const std::string lexeme;
     const Literal literal;
     const int line;
     const int column;
 
     Token(TokenType type,
-          const string& lexeme,
+          const std::string& lexeme,
           Literal literal,
           int line,
           int column)
         : type(type),
           lexeme(lexeme),
-          literal(move(literal)),
+          literal(std::move(literal)),
           line(line),
           column(column)
     {
     }
 
-    string toString() const
+    std::string toString() const
     {
         return tokenTypeToString(type)
                + " "
@@ -116,33 +116,33 @@ public:
     }
 
 private:
-    string literalToString() const
+    std::string literalToString() const
     {
-        return visit(
-            [](const auto& value) -> string
+        return std::visit(
+            [](const auto& value) -> std::string
             {
-                using T = decay_t<decltype(value)>;
+                using T = std::decay_t<decltype(value)>;
 
-                if constexpr (is_same_v<T, nullptr_t>)
+                if constexpr (std::is_same_v<T, std::nullptr_t>)
                 {
                     return "nil";
                 }
-                else if constexpr (is_same_v<T, bool>)
+                else if constexpr (std::is_same_v<T, bool>)
                 {
                     return value ? "true" : "false";
                 }
-                else if constexpr (is_same_v<T, string>)
+                else if constexpr (std::is_same_v<T, std::string>)
                 {
                     return value;
                 }
-                else if constexpr (is_same_v<T, std::shared_ptr<LoxCallable>> || 
-                                   is_same_v<T, std::shared_ptr<LoxInstance>>)
+                else if constexpr (std::is_same_v<T, std::shared_ptr<LoxCallable>> || 
+                                   std::is_same_v<T, std::shared_ptr<LoxInstance>>)
                 {
                     return "runtime_object";
                 }
                 else
                 {
-                    ostringstream oss;
+                    std::ostringstream oss;
                     oss << value;
                     return oss.str();
                 }
@@ -150,7 +150,7 @@ private:
             literal);
     }
 
-    static string tokenTypeToString(TokenType type)
+    static std::string tokenTypeToString(TokenType type)
     {
         switch (type)
         {
@@ -207,7 +207,7 @@ private:
     }
 };
 
-inline ostream& operator<<(ostream& os, const Token& token)
+inline std::ostream& operator<<(std::ostream& os, const Token& token)
 {
     os << token.toString();
     return os;

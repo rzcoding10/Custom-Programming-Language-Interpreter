@@ -1,0 +1,3 @@
+/Users/rakshanzade/Documents/interpreter/build/CMakeFiles/lox.dir
+/Users/rakshanzade/Documents/interpreter/build/CMakeFiles/edit_cache.dir
+/Users/rakshanzade/Documents/interpreter/build/CMakeFiles/rebuild_cache.dir

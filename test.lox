@@ -1,13 +1,1 @@
-class Empty {}
-
-class Child < Empty {
-  test() {
-    super.ghostMethod();
-  }
-}
-
-Child().test();
-
-// Expect:
-// Undefined property 'ghostMethod'.
-// [line 5]
+print "Hello World!";

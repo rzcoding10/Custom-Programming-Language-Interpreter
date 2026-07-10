@@ -13,7 +13,6 @@ private:
 public:
     LoxInstance(std::shared_ptr<LoxClass> klass) : klass(std::move(klass)) {}
 
-    // Just the declarations!
     Literal get(const Token& name);
     void set(const Token& name, Literal value);
 

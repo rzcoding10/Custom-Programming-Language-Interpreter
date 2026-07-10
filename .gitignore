@@ -1,11 +1,2 @@
-lox
-cpplox
-clox
 *.o
 .DS_Store
-errors.txt
-a.out
-cpplox
-lox
-test.lox
-error.txt

@@ -2,8 +2,7 @@
 #include "Token.h"
 #include <memory>
 #include <vector>
-
-using namespace std;
+#include <variant>
 
 struct Binary;
 struct Grouping;
@@ -16,79 +15,64 @@ struct Call;
 struct Get;
 struct Set;
 struct This;
-struct Super; // <-- NEW
+struct Super;
 
-
-using Expr = variant<
-    unique_ptr<Assign>,
-    unique_ptr<Binary>,
-    unique_ptr<Grouping>,
-    unique_ptr<LiteralExpr>,
+using Expr = std::variant<
+    std::unique_ptr<Assign>,
+    std::unique_ptr<Binary>,
+    std::unique_ptr<Grouping>,
+    std::unique_ptr<LiteralExpr>,
     std::unique_ptr<Logical>,
-    unique_ptr<Unary>,
-    unique_ptr<Variable>,
-    unique_ptr<Call>,
-    unique_ptr<Get>,
-    unique_ptr<Set>,
-    unique_ptr<This>,
-    unique_ptr<Super> // <-- NEW
+    std::unique_ptr<Unary>,
+    std::unique_ptr<Variable>,
+    std::unique_ptr<Call>,
+    std::unique_ptr<Get>,
+    std::unique_ptr<Set>,
+    std::unique_ptr<This>,
+    std::unique_ptr<Super>
 >;
-
 
 template <typename T, typename... Args>
 Expr makeExpr(Args&&... args)
 {
-    return make_unique<T>(forward<Args>(args)...);
+    return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-
-struct Binary
-{
+struct Binary {
     Expr left;
     Token op;
     Expr right;
-
     Binary(Expr left, Token op, Expr right)
-        : left(move(left)), op(move(op)), right(move(right)) {}
+        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 };
 
-struct Grouping
-{
+struct Grouping {
     Expr expression;
-
     Grouping(Expr expression)
-        : expression(move(expression)) {}
+        : expression(std::move(expression)) {}
 };
 
-struct LiteralExpr
-{
+struct LiteralExpr {
     Literal value;
-
     LiteralExpr(Literal value)
-        : value(move(value)) {}
+        : value(std::move(value)) {}
 };
 
-struct Unary
-{
+struct Unary {
     Token op;
     Expr right;
-
     Unary(Token op, Expr right)
-        : op(move(op)), right(move(right)) {}
+        : op(std::move(op)), right(std::move(right)) {}
 };
 
-struct Variable 
-{
+struct Variable {
     Token name;
-
     Variable(Token name) : name(std::move(name)) {}
 };
 
-struct Assign 
-{
+struct Assign {
     Token name;
     Expr value;
-
     Assign(Token name, Expr value)
         : name(std::move(name)), value(std::move(value)) {}
 };
@@ -97,7 +81,6 @@ struct Logical {
     Expr left;
     Token op;
     Expr right;
-
     Logical(Expr left, Token op, Expr right)
         : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 };
@@ -106,7 +89,6 @@ struct Call {
     Expr callee;
     Token paren;
     std::vector<Expr> arguments;
-
     Call(Expr callee, Token paren, std::vector<Expr> arguments)
         : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
 };
@@ -114,7 +96,6 @@ struct Call {
 struct Get {
     Expr object;  
     Token name;   
-
     Get(Expr object, Token name)
         : object(std::move(object)), name(std::move(name)) {}
 };
@@ -123,22 +104,19 @@ struct Set {
     Expr object;  
     Token name;   
     Expr value;   
-
     Set(Expr object, Token name, Expr value)
         : object(std::move(object)), name(std::move(name)), value(std::move(value)) {}
 };
 
 struct This {
     Token keyword;
-
     This(Token keyword) : keyword(std::move(keyword)) {}
 };
 
-// --- NEW ---
 struct Super {
     Token keyword;
     Token method;
-
     Super(Token keyword, Token method)
         : keyword(std::move(keyword)), method(std::move(method)) {}
 };
+
